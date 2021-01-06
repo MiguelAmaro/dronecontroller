@@ -3,11 +3,17 @@
 #define FLIGHTCONTROL_OPENGL_H
 
 #include <Windows.h>
-//#include <GLAD/glad.h>  // NOTE(MIGUEL): Causes SATUS_ACCESS_VIOLATION! FUCK USING GLAD
-#include <GL/gl.h> 
+#include <GLAD/glad.h>  // NOTE(MIGUEL): Causes SATUS_ACCESS_VIOLATION! FUCK USING GLAD
+//#include <GL/gl.h> 
+#include <cglm/cglm.h>
+#include <cglm/util.h>
+#include <cglm/vec4.h>
+#include <cglm/vec3.h>
+#include <cglm/mat4.h>
+#include <cglm/affine.h>
 #include "LAL.h"
 #include <stdbool.h>
-//#include <WGL/wglext.h>
+#include <WGL/wglext.h>
 
 #define WGL_CONTEXT_MAJOR_VERSION_ARB             0x2091
 #define WGL_CONTEXT_MINOR_VERSION_ARB             0x2092

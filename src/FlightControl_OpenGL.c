@@ -10,6 +10,7 @@ PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB;
 //PFNGLGETSTRINGPROC glGetString;
 */
 
+//~ WINDOWS
 typedef HGLRC WINAPI wglCreateContextAttribsARB_type(HDC hdc, HGLRC hShareContext,
                                                      const int *attribList);
 wglCreateContextAttribsARB_type *wglCreateContextAttribsARB;
@@ -24,30 +25,30 @@ wglChoosePixelFormatARB_type *wglChoosePixelFormatARB;
 internal void
 win32_Init_OpenGL_Extensions(void)
 {
-    WNDCLASSA window_class = {
+    WNDCLASS dummy_window_class = {
         .style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
         .lpfnWndProc = DefWindowProcA,
-        .hInstance = GetModuleHandle(0),
+        .hInstance = GetModuleHandle(0), // this function sus
         .lpszClassName = "Dummy_WGL_Ext_Init",
     };
     
-    if (!RegisterClassA(&window_class)) {
+    if (!RegisterClass(&dummy_window_class)) {
         printf("Failed to register dummy OpenGL window.");
     }
     
-    HWND dummy_window = CreateWindowExA(
-                                        0,
-                                        window_class.lpszClassName,
-                                        "Dummy OpenGL Window",
-                                        0,
-                                        CW_USEDEFAULT,
-                                        CW_USEDEFAULT,
-                                        CW_USEDEFAULT,
-                                        CW_USEDEFAULT,
-                                        0,
-                                        0,
-                                        window_class.hInstance,
-                                        0);
+    HWND dummy_window = CreateWindowEx(
+                                       0,
+                                       dummy_window_class.lpszClassName,
+                                       "Dummy OpenGL Window",
+                                       0,
+                                       CW_USEDEFAULT,
+                                       CW_USEDEFAULT,
+                                       CW_USEDEFAULT,
+                                       CW_USEDEFAULT,
+                                       0,
+                                       0,
+                                       dummy_window_class.hInstance,
+                                       0);
     
     if (!dummy_window) {
         printf("Failed to create dummy OpenGL window.");
@@ -84,11 +85,12 @@ win32_Init_OpenGL_Extensions(void)
         printf("Failed to activate dummy OpenGL rendering context.");
     }
     
+    //ASSERT(gladLoadGLLoader((GLADloadproc)wglGetProcAddress));
+    
     wglCreateContextAttribsARB = (wglCreateContextAttribsARB_type*)wglGetProcAddress(
                                                                                      "wglCreateContextAttribsARB");
     wglChoosePixelFormatARB = (wglChoosePixelFormatARB_type*)wglGetProcAddress(
                                                                                "wglChoosePixelFormatARB");
-    
     
     
     wglMakeCurrent(dummy_dc, 0);

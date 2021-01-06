@@ -2,30 +2,86 @@
 
 #ifndef FLIGHTCONTROL_SHADER_H
 #define FLIGHTCONTROL_SHADER_H
+#include "FlightControl_FileIO.h"
+//#include "FlightControl_OpenGL.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "LAL.h"
-
-
 
 #define VERTSEC ("//~VERT SHADER")
 #define FRAGSEC ("//~FRAG SHADER")
 
 
 u32 
-GetFileSize(readonly u8 *path) 
+CreateShaderProgram(readonly u8* vertexShaderSource, readonly u8* fragmentShaderSource)
 {
-    FILE *File;
-    File = fopen(path, "r");
-    ASSERT(File);
     
-    fseek(File, 0L, SEEK_END);
-    u32 size_bytes = ftell(File);
+    u32 vertexShader   = glCreateShader(GL_VERTEX_SHADER);
+    u32 fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     
-    return size_bytes;
+    s32 success;
+    u8 infoLog[512];
+    
+    // CREATING VERTEX SHADER
+    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+    glCompileShader(vertexShader);
+    
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    
+    if(!success)
+    {
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED | %s \r\n", infoLog);
+    }
+    
+    
+    // CREATING FRAGMENT SHADER
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    glCompileShader(fragmentShader);
+    
+    // Set Debug log Buffer to Zero
+    for(u32 byte = 0; byte < 512; ++byte){
+        infoLog[byte] = 0;
+    }
+    
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    
+    if(!success)
+    {
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED | %s \r\n", infoLog);
+    }
+    
+    //printf("FFFFFFFUUUUUUUUUUUCCKKKKKKKKKKKKKKKKKKK!!!!!");
+    // CREATING A SHADER PROGRAM
+    // AND LINKING SHADERS TO IT
+    u32 shaderProgram;
+    shaderProgram = glCreateProgram();
+    
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    
+    glLinkProgram(shaderProgram);
+    
+    //  Set Debug log Buffer to Zero
+    for(u32 byte = 0; byte < 512; ++byte){
+        infoLog[byte] = 0;
+    }
+    
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    
+    if(!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        printf("ERROR::SHADER_PROGRAM::LINKING_FAILED | %s \r\n", infoLog);
+    }
+    
+    
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader); 
+    
+    return shaderProgram;
 }
-
 
 
 void 
@@ -39,7 +95,7 @@ ReadAShaderFile(u32 *ShaderProgram, readonly u8 *path)
     //u32 j = 0;
     //u32 i = 1;
     
-    u32 BytesToRead = GetFileSize(path);
+    u32 BytesToRead = FileIO_GetFileSize(path);
     u8 *Shader = calloc( ( BytesToRead + 10 ),  sizeof(u8));
     
     ASSERT(Shader);
@@ -79,6 +135,8 @@ ReadAShaderFile(u32 *ShaderProgram, readonly u8 *path)
     
     return;
 }
+
+
 
 
 #endif //FLIGHTCONTROL_SHADER_H
