@@ -1,39 +1,6 @@
-#include <Windows.h>
-#include "LAL.h"
-//#include <GLAD/glad.h> // NOTE(MIGUEL): Causes SATUS_ACCESS_VIOLATION
-#include <GL/gl.h> 
-#include <WGL/wglext.h>
+#include "FlightControl_OpenGL.h"
 
-#define WGL_CONTEXT_MAJOR_VERSION_ARB             0x2091
-#define WGL_CONTEXT_MINOR_VERSION_ARB             0x2092
 
-#define WGL_CONTEXT_PROFILE_MASK_ARB              0x9126
-#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB          0x00000001
-#define WGL_DRAW_TO_WINDOW_ARB                    0x2001
-#define WGL_ACCELERATION_ARB                      0x2003
-#define WGL_SUPPORT_OPENGL_ARB                    0x2010
-#define WGL_DOUBLE_BUFFER_ARB                     0x2011
-#define WGL_PIXEL_TYPE_ARB                        0x2013
-#define WGL_COLOR_BITS_ARB                        0x2014
-#define WGL_DEPTH_BITS_ARB                        0x2022
-#define WGL_STENCIL_BITS_ARB                      0x2023
-
-#define WGL_FULL_ACCELERATION_ARB                 0x2027
-#define WGL_TYPE_RGBA_ARB                         0x202B
-/*
-#define GL_CheckError() GL_CheckError_(__FILE__, __LINE__)
-
-GLenum  GL_CheckError_(readonly u8 *file, u32 line);
-
-#define GL_Call(function) GL_ClearError();\
-function;\
-GL_Log(__FILE__, __LINE__, #function);
-
-b32 GL_Log(readonly u8 *file, readonly u32 line, readonly u8 *function);
-
-void GL_ClearError(void);
-
-*/
 // NOTE(MIGUEL): Sould I get a higher version of opengl via glad?
 
 /*
@@ -132,8 +99,7 @@ win32_Init_OpenGL_Extensions(void)
     return;
 }
 
-//~
-internal HGLRC
+HGLRC
 win32_Init_OpenGL(HDC real_dc)
 {
     win32_Init_OpenGL_Extensions();
@@ -166,27 +132,27 @@ win32_Init_OpenGL(HDC real_dc)
     }
     
     // Specify that we want to create an OpenGL 3.3 core profile context
-    int gl33_attribs[] = {
-        WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
-        WGL_CONTEXT_MINOR_VERSION_ARB, 3,
+    int gl_version_attribs[] = {
+        WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
+        WGL_CONTEXT_MINOR_VERSION_ARB, 6,
         WGL_CONTEXT_PROFILE_MASK_ARB,  WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
         0,
     };
     
-    HGLRC gl33_context = wglCreateContextAttribsARB(real_dc, 0, gl33_attribs);
-    if (!gl33_context) {
-        printf("Failed to create OpenGL 3.3 context.");
+    HGLRC gl_version_context = wglCreateContextAttribsARB(real_dc, 0, gl_version_attribs);
+    if (!gl_version_context) {
+        printf("Failed to create %d.%d rendering context.", gl_version_attribs[1], gl_version_attribs[3]);
     }
     
-    if (!wglMakeCurrent(real_dc, gl33_context)) {
-        printf("Failed to activate OpenGL 3.3 rendering context.");
+    if (!wglMakeCurrent(real_dc, gl_version_context)) {
+        printf("Failed to activate OpenGL %d.%d rendering context.", gl_version_attribs[1], gl_version_attribs[3]);
     }
     
     
-    return gl33_context;
+    return gl_version_context;
 }
 
-/*
+//~ PLATFORM INDEPENDENT
 GLenum 
 GL_CheckError_(readonly u8 *file, u32 line)
 {
@@ -240,4 +206,3 @@ void GL_ClearError(void)
     return;
 }
 
-*/

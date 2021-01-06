@@ -5,9 +5,8 @@
 
 #include <stdint.h>
 
-#define true  (1)
-#define false (0)
-
+//#define true  (1)
+//#define false (0)
 
 #define ASSERT(Expression) if(!(Expression)){ *(u32 *)0x00 = 0; }
 

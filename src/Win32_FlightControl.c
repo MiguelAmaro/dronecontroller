@@ -1,15 +1,15 @@
-#include <stdio.h>
-#include <string.h>
 #include <windows.h>
 #include "FlightControl_FlightStick.c"
 #include "FlightControl_SerialPort.h"
 #include "FlightControl_Platform.h"
-#include "FlightControl_OpenGL.c"
+#include "FlightControl_OpenGL.h"
 #include "FlightControl.c"
+#include <stdio.h>
+#include <string.h>
 #include "LAL.h"
 #include "RoundBuffer.c"
-#include <GL/gl.h>
-#include <WGL/wglext.h>
+//#include <GL/gl.h>
+//#include <WGL/wglext.h>
 
 // TODO(MIGUEL): Add opengl
 
@@ -213,9 +213,8 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         
         HDC gl_device_context = GetDC(Window);
         
-        win32_Init_OpenGL(gl_device_context);
+        HGLRC gl_real_context = win32_Init_OpenGL(gl_device_context);
         
-        //ASSERT(!gladLoadGLLoader((GLADloadproc)wglGetProcAddress));
         
         printf("OPENGL VERSION: %s \n", glGetString(GL_VERSION));
         
