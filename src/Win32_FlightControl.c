@@ -104,6 +104,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                                                              PAGE_READWRITE);
         }
         
+        App_Init(&global_platform);
         //**************************************
         // MAIN PROGRAM LOOP
         //
@@ -129,8 +130,6 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                     TranslateMessage(&Message);
                     DispatchMessage (&Message);
                 }
-                
-                global_platform.quit |= App_Update(&global_platform);
                 
                 //~ JOYSTICK & SERIALPORT 
                 {
@@ -182,12 +181,14 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 }
                 
                 //~ OPENGL RENDERING
-                glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                 
                 // Do OpenGL rendering here
                 
+                global_platform.quit |= App_Update(&global_platform);
+                
+                
                 SwapBuffers(gl_device_context);
+                
             }
             CloseHandle(global_Device.comm);//Closing the Serial Port
         }

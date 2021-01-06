@@ -5,15 +5,6 @@
 #include "stb/stb_image.h"
 #include "LAL.h"
 
-
-//global u8 Running;
-global BITMAPINFO BitmapInfo;
-global void *BitmapMemory;
-global int BitmapWidth;
-global int BitmapHeight;
-global int BytesPerPixel = 4;
-
-
 typedef struct 
 {
     f32 *vertices;
@@ -29,14 +20,21 @@ typedef struct App {
     u32 stuff;
 } App;
 
+
 global App *app = 0;
 global Platform *platform = 0;
 
+global Entity Sprite = {0};
 
 global u32 ufrm_sprite_model     ;
 global u32 ufrm_sprite_color     ; 
 global u32 ufrm_sprite_projection;
 
+global BITMAPINFO BitmapInfo;
+global void *BitmapMemory;
+global int BitmapWidth;
+global int BitmapHeight;
+global int BytesPerPixel = 4;
 
 
 void
@@ -44,7 +42,6 @@ App_Init(Platform *platform_)
 {
     //~GRAPH-> SPRITE.INIT
     
-    local_persist Entity Sprite = {0};
     
     f32 sprite_vertices[] = { 
         // pos      // tex
@@ -138,6 +135,59 @@ b32 App_Update(Platform *platform_)
             app_should_quit = 1;
         }
     }
+    
+    //glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
+    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    
+    //~SPRITE RENDERER_01
+    
+    static vec3 position = { 0.0f, 0.0f, 0.0f };
+    static vec3 size = { 1.0f, 1.0f, 0.0f };
+    static vec3 color = { 1.0f, 1.0f, 1.0f };
+    static vec2 size2 = { 1.0f, 1.0f };
+    static f32 rotate = 10;
+    static vec3 scalefactor = { 0 };
+    
+    
+    scalefactor[0] = size[0];
+    scalefactor[1] = size[1];
+    scalefactor[2] = 1.0f;
+    
+    rotate++;
+    
+    GL_Call(glUseProgram(Sprite.shader));
+    
+    mat4 model = GLM_MAT4_IDENTITY_INIT; // constructor
+    glm_translate(model, position );
+    
+    size[0] += 0.5f;
+    size[1] += 1.0f;
+    glm_translate(model, size); 
+    glm_rotate(model, glm_rad(rotate),(vec3){0.0f, 0.0f, 1.0f}); 
+    //size[0] += -0.5f;
+    //size[1] += -0.5f;
+    
+    //glm_translate(model, size);
+    
+    glm_scale(model, scalefactor); 
+    
+    GL_Call(glUniform3f(ufrm_sprite_color, color[0],color[1], color[2]));
+    GL_Call(glUniformMatrix4fv(ufrm_sprite_model, 1, GL_FALSE, (f32 *)model));
+    
+    
+    GL_Call(glActiveTexture(GL_TEXTURE1));
+    GL_Call(glBindTexture(GL_TEXTURE_2D, Sprite.texture));
+    
+    // Enables the alpha channel
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    //glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+    
+    GL_Call(glBindVertexArray(Sprite.vertex_Attributes));
+    GL_Call(glDrawArrays(GL_TRIANGLES, 0, 6));
+    GL_Call(glBindVertexArray(0));
     
     return app_should_quit;
 }
