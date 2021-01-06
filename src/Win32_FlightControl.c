@@ -141,7 +141,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                            Joystick_State.lY);
                     */
                     
-                    
+                    /*
                     // Send command to mcu over IO steam | controlled by joystick 
                     if( Joystick_State.lX > 32767){
                         global_Device.buffer[0] = 'A';
@@ -161,6 +161,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                                                          &global_Device.bytes_written, //Bytes written
                                                          NULL);
                     }
+                    */
                 }
                 
                 //~ WIN32 RENDERING
@@ -211,6 +212,11 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
 LRESULT CALLBACK 
 win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l_param) {
     LRESULT Result = 0;
+    
+    u32 key_code = 0;
+    u32 key_index = 0;
+    b32 key_down = false; 
+    
     switch(Message)
     {
         case WM_SIZE:
@@ -254,31 +260,32 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
             EndPaint(Window, &Paint);
         }
         break;
-        // TODO(MIGUEL): Add code for WM_KEYUP
         case WM_KEYDOWN:
         {
-            u32 key_code = w_param;
-            u32 key_index = 0;
+            key_down = Message == WM_KEYDOWN;
+            key_code = w_param;
+            key_index = 0;
             
-            if(key_code == 'W')
+            if(key_code >= 'A' && key_code <= 'Z')
             { 
-                key_index = KEY_w;
+                key_index = KEY_a + (key_code - 'A');
             }
-            if(key_code == 'S')
-            { 
-                key_index = KEY_s;
-            }
-            if(key_code == 'A')
-            { 
-                key_index = KEY_a;
-            }
-            if(key_code == 'D')
-            { 
-                key_index = KEY_d;
-            }
-            global_platform.key_down[key_index] = 1;
+            global_platform.key_down[key_index] = key_down;
         }
         break;
+        // TODO(MIGUEL): Add code for WM_KEYUP
+        case WM_KEYUP:
+        {
+            key_down = Message == WM_KEYDOWN;
+            key_code = w_param;
+            key_index = 0;
+            
+            if(key_code >= 'A' && key_code <= 'Z')
+            { 
+                key_index = KEY_a + (key_code - 'A');
+            }
+            global_platform.key_down[key_index] = key_down;
+        }
         default:
         {
             
