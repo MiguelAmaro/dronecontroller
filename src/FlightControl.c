@@ -1,8 +1,10 @@
 #include "FlightControl_Platform.h"
-#include "FLIGHTCONTROL_OpenGL.h"
-#include "FLIGHTCONTROL_Shader.h"
+#include "FlightControl_OpenGL.h"
+#include "FlightControl_Shader.h"
+#include "FlightControl_Helpers.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
+#include <stdio.h>
 #include "LAL.h"
 
 typedef struct 
@@ -130,7 +132,7 @@ b32 App_Update(Platform *platform_)
     platform = platform_;
     app = platform->permanent_storage;
     {
-        if(platform->key_down[KEY_a])
+        if(platform->key_down[KEY_c])
         {
             app_should_quit = 1;
         }
@@ -142,33 +144,41 @@ b32 App_Update(Platform *platform_)
     
     //~SPRITE RENDERER_01
     
-    static vec3 position = { 0.0f, 0.0f, 0.0f };
+    vec3 position = { 0.0f, 0.0f, 0.0f };
     static vec3 size = { 1.0f, 1.0f, 0.0f };
     static vec3 color = { 1.0f, 1.0f, 1.0f };
     static vec2 size2 = { 1.0f, 1.0f };
     static f32 rotate = 10;
     static vec3 scalefactor = { 0 };
     
+    mat4 model = GLM_MAT4_IDENTITY_INIT; // constructor
     
     scalefactor[0] = size[0];
     scalefactor[1] = size[1];
     scalefactor[2] = 1.0f;
     
-    rotate++;
     
     GL_Call(glUseProgram(Sprite.shader));
     
-    mat4 model = GLM_MAT4_IDENTITY_INIT; // constructor
+    
+    position[0] += ( 20) * platform->key_down[KEY_d];
+    position[0] += (-20) * platform->key_down[KEY_a];
+    position[1] += ( 20) * platform->key_down[KEY_w];
+    position[1] += (-20) * platform->key_down[KEY_s];
+    
     glm_translate(model, position );
+    
+    //glm_mat4_print(model, stdout);
     
     size[0] += 0.5f;
     size[1] += 1.0f;
+    
     glm_translate(model, size); 
-    glm_rotate(model, glm_rad(rotate),(vec3){0.0f, 0.0f, 1.0f}); 
-    //size[0] += -0.5f;
-    //size[1] += -0.5f;
+    //glm_rotate(model, glm_rad(rotate),(vec3){0.0f, 0.0f, 1.0f}); 
+    rotate++;
     
     //glm_translate(model, size);
+    //Helpers_Display_Matrix4(model, "Model Matrix");
     
     glm_scale(model, scalefactor); 
     

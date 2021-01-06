@@ -13,6 +13,7 @@
 #include <WGL/wglext.h>
 
 // TODO(MIGUEL): Add opengl
+// TODO(MIGUEL): Add openCV
 
 global Platform global_platform = {0};
 
@@ -164,6 +165,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 //~ WIN32 RENDERING
                 {
+                    /*
                     RenderWeirdGradient(XOffset - Joystick_State.lX * .5,
                                         YOffset - Joystick_State.lY * .5);
                     
@@ -178,6 +180,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                     
                     ++YOffset;
                     ++XOffset;
+*/
                 }
                 
                 //~ OPENGL RENDERING
@@ -257,9 +260,21 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
             u32 key_code = w_param;
             u32 key_index = 0;
             
+            if(key_code == 'W')
+            { 
+                key_index = KEY_w;
+            }
+            if(key_code == 'S')
+            { 
+                key_index = KEY_s;
+            }
             if(key_code == 'A')
             { 
                 key_index = KEY_a;
+            }
+            if(key_code == 'D')
+            { 
+                key_index = KEY_d;
             }
             global_platform.key_down[key_index] = 1;
         }

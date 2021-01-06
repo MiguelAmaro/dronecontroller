@@ -1,5 +1,4 @@
 /* date = January 5th 2021 7:33 pm */
-
 #ifndef FLIGHTCONTROL_SHADER_H
 #define FLIGHTCONTROL_SHADER_H
 #include "FlightControl_FileIO.h"
