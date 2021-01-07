@@ -18,6 +18,9 @@ typedef struct Platform
     u32 permanent_storage_size;
     b32 quit;
     b32 key_down[KEY_MAX];
+    f32 frames_per_second_target;
+    f32 current_time;
+    f32 last_time;
 } Platform;
 
 

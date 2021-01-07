@@ -12,6 +12,10 @@
 #include <GL/gl.h>
 #include <WGL/wglext.h>
 
+#include <stdio.h>
+#include <io.h>
+#include <fcntl.h>
+
 // TODO(MIGUEL): Add opengl
 // TODO(MIGUEL): Add openCV
 
@@ -46,7 +50,6 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
     WindowClass.hInstance     = Instance;
     //WindowClass.hIcon;
     WindowClass.lpszClassName = "MyWindowClass";
-    
     
     
     //**************************************
@@ -103,25 +106,45 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                                                              global_platform.permanent_storage_size,
                                                              MEM_COMMIT | MEM_RESERVE,
                                                              PAGE_READWRITE);
+            
+            global_platform.frames_per_second_target = 60.0f;
         }
         
         App_Init(&global_platform);
-        //**************************************
-        // MAIN PROGRAM LOOP
-        //
-        // MESSAGE PROCESSING AND RENDERING
-        //**************************************
         
-        if(Window){
+        
+        if(Window)
+        {
             DIJOYSTATE2 Joystick_State = {0};
             int XOffset = 0;
             int YOffset = 0;
             
-            //Running = true; // NOTE(MIGUEL): Depracated 
+            MSG Message;
             
-            // NOTE(MIGUEL): While depended on "Running" variable
-            while(!global_platform.quit){
-                MSG Message;
+            s64 performance_counter_frequency = 1;
+            {
+                LARGE_INTEGER freq = { 0LL };
+                QueryPerformanceFrequency(&freq);
+                performance_counter_frequency = freq.QuadPart;
+            }
+            
+            LARGE_INTEGER begin_frame_time_data = { 0LL };
+            LARGE_INTEGER end_frame_time_data   = { 0LL };
+            
+            //**************************************
+            // MAIN PROGRAM LOOP
+            //
+            // MESSAGE PROCESSING AND RENDERING
+            //**************************************
+            while(!global_platform.quit)
+            {
+                global_platform.last_time = global_platform.current_time;
+                global_platform.current_time += 1 / global_platform.frames_per_second_target;
+                s64 desired_frame_time_counts = performance_counter_frequency / global_platform.frames_per_second_target;
+                
+                QueryPerformanceCounter(&begin_frame_time_data);
+                
+                
                 while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
                 {
                     if(Message.message == WM_QUIT)
@@ -190,9 +213,33 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 global_platform.quit |= App_Update(&global_platform);
                 
-                
                 SwapBuffers(gl_device_context);
                 
+                
+                QueryPerformanceCounter(&end_frame_time_data);
+                
+                //printf("Frame data: %lld <- ( %lld - %lld ) \n", (end_frame_time_data.QuadPart - begin_frame_time_data.QuadPart), end_frame_time_data.QuadPart, begin_frame_time_data.QuadPart);
+                
+                // NOTE(MIGUEL): Wait any time, if neccssary
+                // TODO(MIGUEL): think about changing target fps if current target is not met
+                {
+                    s64 counts_in_frame = end_frame_time_data.QuadPart - begin_frame_time_data.QuadPart;
+                    s64 counts_to_wait = desired_frame_time_counts - counts_in_frame;
+                    
+                    LARGE_INTEGER begin_wait_time_data;
+                    LARGE_INTEGER end_wait_time_data;
+                    
+                    QueryPerformanceCounter(&begin_wait_time_data);
+                    
+                    while(counts_to_wait > 0)
+                    {
+                        QueryPerformanceCounter(&end_wait_time_data);
+                        counts_to_wait -= end_wait_time_data.QuadPart - begin_wait_time_data.QuadPart;
+                        begin_wait_time_data = end_wait_time_data;
+                        
+                        //printf("Wait data: %lld <- ( %lld - %lld ) \n", (end_wait_time_data.QuadPart - begin_wait_time_data.QuadPart), end_wait_time_data.QuadPart, begin_wait_time_data.QuadPart);
+                    }
+                }
             }
             CloseHandle(global_Device.comm);//Closing the Serial Port
         }
