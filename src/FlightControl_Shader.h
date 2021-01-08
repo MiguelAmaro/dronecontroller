@@ -1,6 +1,7 @@
 /* date = January 5th 2021 7:33 pm */
 #ifndef FLIGHTCONTROL_SHADER_H
 #define FLIGHTCONTROL_SHADER_H
+// NOTE(MIGUEL): Why don't i have to include FC_OpenGL.h
 #include "FlightControl_FileIO.h"
 //#include "FlightControl_OpenGL.h"
 #include <stdlib.h>
@@ -134,8 +135,42 @@ ReadAShaderFile(u32 *ShaderProgram, readonly u8 *path)
     
     return;
 }
-
-
-
-
+/*
+void Shader_Load_Texture()
+{
+    // THE AFFECTS OF THIS MIGHT NOT BE APPARENT UNSLESS THERE ARE CERTAIN CONDITIONS
+    GL_Call(glGenTextures(1, &Sprite.texture));
+    GL_Call(glBindTexture(GL_TEXTURE_2D, Sprite.texture));
+    // CONFIGUE OPENGL WRAPPING OPTIONS
+    GL_Call(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT));
+    GL_Call(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT));
+    // CONFIGURE OPENGL FILTERING OPTIONS
+    GL_Call(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+    GL_Call(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+    
+    //GL_Call(glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, texture_border_color)); 
+    
+    // LOAD TEXTURE
+    s32 sprite_tex_width, sprite_tex_height, sprite_nrChannels;
+    //stbi_set_flip_vertically_on_load(true);  
+    u8 *sprite_tex_data = stbi_load("../res/images/geo.png", &sprite_tex_width, &sprite_tex_height, &sprite_nrChannels, STBI_rgb_alpha); 
+    if(sprite_tex_data)
+    {
+        //printf("Tex Data: \n %d | %d | %s  \n", sprite_tex_width, sprite_tex_height, sprite_tex_data);
+        //glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        // NOTE(MIGUEL): NO AFFECT
+        GL_Call(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sprite_tex_width, sprite_tex_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, sprite_tex_data));
+        GL_Call(glGenerateMipmap(GL_TEXTURE_2D));
+    }
+    else
+    {
+        printf("Failed to load texture");
+    }
+    
+    stbi_image_free(sprite_tex_data);
+    
+    
+    return;
+}
+*/
 #endif //FLIGHTCONTROL_SHADER_H

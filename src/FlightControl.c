@@ -2,22 +2,13 @@
 #include "FlightControl_OpenGL.h"
 #include "FlightControl_Shader.h"
 #include "FlightControl_Helpers.h"
+#include "FlightControl_Entity.h"
+#include "FlightControl_Renderer.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
 #include <stdio.h>
 #include <math.h>
 #include "LAL.h"
-
-typedef struct 
-{
-    f32 *vertices;
-    u32 *indices;
-    u32  shader;
-    u32  vertex_Buffer;
-    u32  element_Buffer;
-    u32  vertex_Attributes;
-    u32  texture;
-} Entity;
 
 typedef struct App {
     f32 dela_time;
@@ -35,7 +26,6 @@ global u32 ufrm_sprite_model     ;
 global u32 ufrm_sprite_color     ; 
 global u32 ufrm_sprite_projection;
 
-
 global vec4 color       = { 1.0f, 1.0f, 1.0f };
 global mat4 translation = GLM_MAT4_ZERO_INIT;
 global mat4 scale       = GLM_MAT4_ZERO_INIT;
@@ -43,9 +33,13 @@ global mat4 rotation    = GLM_MAT4_ZERO_INIT;
 global vec3 scalefactor = { 100.0f, 100.0f, 0.0f };
 
 
-global u32 ufrm_nick_model     ;
-global u32 ufrm_nick_color     ; 
-global u32 ufrm_nick_projection;
+
+global Render_Info nick_render_info;
+//global u32 ufrm_nick_model     ;
+//global u32 ufrm_nick_mouse     ;
+//global u32 ufrm_nick_color     ; 
+// NOTE(MIGUEL): Should there just be one projectin matrix for everthing
+//global u32 ufrm_nick_projection;
 
 global vec4 nick_color       = { 1.0f, 1.0f, 1.0f };
 global mat4 nick_translation = GLM_MAT4_ZERO_INIT;
@@ -194,7 +188,7 @@ App_Init(Platform *platform_)
     
     
     // THIS SHADER MAyBE FUCKED UP
-    ReadAShaderFile(&Nick.shader, "../res/shaders/SpriteShader.glsl");
+    ReadAShaderFile(&Nick.shader, "../res/shaders/Nick.glsl");
     
     
     // NOTE(MIGUEL): ISSUES HERE !!!! 
@@ -212,9 +206,10 @@ App_Init(Platform *platform_)
     GL_Call(glBindBuffer(GL_ARRAY_BUFFER, 0)); 
     GL_Call(glBindVertexArray(0));
     
-    ufrm_nick_model      = glGetUniformLocation(Nick.shader, "model");
-    ufrm_nick_color      = glGetUniformLocation(Nick.shader, "spriteColor");
-    ufrm_nick_projection = glGetUniformLocation(Nick.shader, "projection");
+    nick_render_info.uniform_model      = glGetUniformLocation(Nick.shader, "model");
+    nick_render_info.uniform_color      = glGetUniformLocation(Nick.shader, "spriteColor");
+    nick_render_info.uniform_input      = glGetUniformLocation(Nick.shader, "mousePos");
+    nick_render_info.uniform_projection = glGetUniformLocation(Nick.shader, "projection");
     
     return;
 }
@@ -226,34 +221,38 @@ b32 App_Update(Platform *platform_)
     
     app = platform->permanent_storage;
     {
+        f32 move_speed = -200.0f *  app->dela_time;
+        app->dela_time = platform->current_time - platform->last_time;
+        
         if(platform->key_down[KEY_c])
         {
             app_should_quit = 1;
         }
         
+        
         // NOTE(MIGUEL): Input only for SRITE AKE GEO(player)
         if(platform->key_down[KEY_w])
         {
-            glm_translate(translation, (vec3){0.0f, -20.0f, 0.0f} );
+            glm_translate(translation, (vec3){0.0f, move_speed , 0.0f} );
             //printf("w\n");
         }
         
         if(platform->key_down[KEY_s])
         {
-            glm_translate(translation, (vec3){0.0f, 20.0f, 0.0f} );
+            glm_translate(translation, (vec3){0.0f, -move_speed, 0.0f} );
             //printf("s\n");
         }
         
         if(platform->key_down[KEY_a])
         {
-            glm_translate(translation, (vec3){-20.0f, 0.0f, 0.0f} );
+            glm_translate(translation, (vec3){move_speed, 0.0f, 0.0f} );
             //printf("a\n");
             
         }
         
         if(platform->key_down[KEY_d])
         {
-            glm_translate(translation, (vec3){20.0f, 0.0f, 0.0f} );
+            glm_translate(translation, (vec3){-move_speed, 0.0f, 0.0f} );
             //printf("d\n");
         }
         
@@ -272,6 +271,9 @@ b32 App_Update(Platform *platform_)
         
     }
     
+    // ************************************************
+    // RENDERING
+    //*************************************************
     local_persist b32 first_render = true;
     
     glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
@@ -282,6 +284,7 @@ b32 App_Update(Platform *platform_)
     
     mat4 model = GLM_MAT4_ZERO_INIT; // constructor
     mat4 nick_model = GLM_MAT4_ZERO_INIT; // constructor
+    nick_render_info.matrix_model = (f32 *)&nick_model;
     
     GL_Call(glUseProgram(Sprite.shader));
     
@@ -291,7 +294,7 @@ b32 App_Update(Platform *platform_)
         glm_scale_make(scale, (vec3){200.0f, 200.0f, 1.0f});
         glm_rotate_make(rotation, glm_rad(10.0f) ,(vec3){0.0f, 1.0f, 0.0f});
         
-        glm_translate_make(nick_translation, (vec3){200.0f, 200.0f, 0.0f});
+        glm_translate_make(nick_translation, (vec3){1.0f, 1.0f, 0.0f});
         glm_scale_make(nick_scale, (vec3){200.0f, 200.0f, 1.0f});
         glm_rotate_make(nick_rotation, glm_rad(10.0f) ,(vec3){0.0f, 1.0f, 0.0f});
         
@@ -329,27 +332,10 @@ b32 App_Update(Platform *platform_)
     //~ SPRITE RENDERER_01
     
     GL_Call(glUseProgram(Nick.shader));
-    
-    glm_translate(nick_translation, (vec3){ (cos(platform->current_time) * 1.0f), (sin(platform->current_time) * 1.0f), 0.0f} );
-    
+    glm_translate(nick_translation, (vec3){ ( cos(platform->current_time) ), (  sin(platform->current_time) ), 0.0f} );
     glm_mat4_mulN((mat4 *[]){&nick_translation, &nick_scale }, 2, nick_model);
     
-    GL_Call(glUniformMatrix4fv(ufrm_nick_model, 1, GL_FALSE, (f32 *)nick_model));
-    GL_Call(glUniform3f(ufrm_nick_color, color[0],color[1], color[2]));
-    
-    GL_Call(glActiveTexture(GL_TEXTURE1));
-    GL_Call(glBindTexture(GL_TEXTURE_2D, Nick.texture));
-    
-    // Enables the alpha channel
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
-    //glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-    
-    GL_Call(glBindVertexArray(Nick.vertex_Attributes));
-    GL_Call(glDrawArrays(GL_TRIANGLES, 0, 6));
-    GL_Call(glBindVertexArray(0));
-    
+    Renderer_Draw_Sprite(platform, &Nick, &nick_render_info, (f32 *)&nick_color );
     
     return app_should_quit;
 }

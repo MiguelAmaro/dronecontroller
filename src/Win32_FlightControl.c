@@ -270,9 +270,9 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
         {
             RECT ClientRect;
             GetClientRect(Window, &ClientRect); //Get RECT of window excludes borders
-            int Width  = ClientRect.right  - ClientRect.left;
-            int Height = ClientRect.bottom - ClientRect.top ;
-            win32_resize_DIB_Section(Width, Height);
+            global_platform.window_width  = ClientRect.right  - ClientRect.left;
+            global_platform.window_height = ClientRect.bottom - ClientRect.top ;
+            //win32_resize_DIB_Section(Width, Height);
         }
         break;
         case WM_CLOSE:
@@ -333,6 +333,16 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
             }
             global_platform.key_down[key_index] = key_down;
         }
+        case WM_MOUSEMOVE:
+        {
+            global_platform.mouse_x_direction = global_platform.mouse_x < (l_param & 0x0000FFFF)? (u32)(1): (u32)(-1);
+            global_platform.mouse_x = (l_param & 0x0000FFFF);
+            
+            global_platform.mouse_y_direction = global_platform.mouse_y < (l_param & 0xFFFF0000 >> 16)? (u32)(-1): (u32)(1);
+            global_platform.mouse_y = ((l_param & 0xFFFF0000) >> 16);
+            
+        }
+        break;
         default:
         {
             
