@@ -12,7 +12,7 @@ SET Compiler_Common= -nologo
 SET Warning= -wd4700
 SET Compiler_Flags= %Compiler_Common% -Zi %Warning%  
 SET Include_Directories= -I ..\lib\
-SET Libraries= User32.lib Gdi32.lib Dinput8.lib Dxguid.lib Opengl32.lib Kernel32.lib ..\lib\bin\cglm.lib
+SET Libraries= User32.lib Gdi32.lib Dinput8.lib Dxguid.lib Opengl32.lib Kernel32.lib Ws2_32.lib Shell32.lib ..\lib\bin\cglm.lib
 
 
 

@@ -10,7 +10,7 @@
 
 #define ASSERT(Expression) if(!(Expression)){ *(u32 *)0x00 = 0; }
 
-
+#define NULLPTR       ((void *)0x00)
 #define readonly        const
 #define internal        static
 #define local_persist   static

@@ -9,11 +9,9 @@ typedef struct
 {
     f32 *vertices;
     u32 *indices;
-    u32  shader;
-    u32  vertex_Buffer;
-    u32  element_Buffer;
-    u32  vertex_Attributes;
-    u32  texture;
+    //u32  vertex_Buffer;
+    //u32  element_Buffer;
+    //u32  vertex_Attributes;
 } Entity;
 
 

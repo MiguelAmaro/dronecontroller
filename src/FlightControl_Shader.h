@@ -3,7 +3,10 @@
 #define FLIGHTCONTROL_SHADER_H
 // NOTE(MIGUEL): Why don't i have to include FC_OpenGL.h
 #include "FlightControl_FileIO.h"
+#include "FlightControl_Renderer.h"
 //#include "FlightControl_OpenGL.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb/stb_image.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -135,12 +138,13 @@ ReadAShaderFile(u32 *ShaderProgram, readonly u8 *path)
     
     return;
 }
-/*
-void Shader_Load_Texture()
+
+
+void Shader_Load_Texture(Render_Info *render_info, b32 should_flip )
 {
     // THE AFFECTS OF THIS MIGHT NOT BE APPARENT UNSLESS THERE ARE CERTAIN CONDITIONS
-    GL_Call(glGenTextures(1, &Sprite.texture));
-    GL_Call(glBindTexture(GL_TEXTURE_2D, Sprite.texture));
+    GL_Call(glGenTextures(1, &render_info->texture));
+    GL_Call(glBindTexture(GL_TEXTURE_2D, render_info->texture));
     // CONFIGUE OPENGL WRAPPING OPTIONS
     GL_Call(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT));
     GL_Call(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT));
@@ -152,7 +156,7 @@ void Shader_Load_Texture()
     
     // LOAD TEXTURE
     s32 sprite_tex_width, sprite_tex_height, sprite_nrChannels;
-    //stbi_set_flip_vertically_on_load(true);  
+    stbi_set_flip_vertically_on_load(should_flip);  
     u8 *sprite_tex_data = stbi_load("../res/images/geo.png", &sprite_tex_width, &sprite_tex_height, &sprite_nrChannels, STBI_rgb_alpha); 
     if(sprite_tex_data)
     {
@@ -172,5 +176,5 @@ void Shader_Load_Texture()
     
     return;
 }
-*/
+
 #endif //FLIGHTCONTROL_SHADER_H

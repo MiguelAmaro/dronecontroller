@@ -1,11 +1,12 @@
 #define DIRECTINPUT_VERSION 0x0800
+#include "FlightControl_Platform.h"
 #include "LAL.h"
 #include <windows.h>
 #include <dinput.h>
 #include <dinputd.h>
 
 global LPDIRECTINPUT8       Device_Interface;
-global LPDIRECTINPUTDEVICE8 Joystick;
+global LPDIRECTINPUTDEVICE8 global_Joystick;
 global DIDEVCAPS            Capabilities;
 
 
@@ -72,9 +73,6 @@ BOOL Win32ErrorChecking(HRESULT result, const char* expectation){
 }
 
 
-
-
-
 BOOL CALLBACK DirectInput_Enum_Callback(LPCDIDEVICEINSTANCE device, LPVOID prevInstance) {
     HRESULT result;
     
@@ -86,7 +84,7 @@ BOOL CALLBACK DirectInput_Enum_Callback(LPCDIDEVICEINSTANCE device, LPVOID prevI
         
         result = Device_Interface->lpVtbl->CreateDevice(Device_Interface,
                                                         &device->guidInstance,
-                                                        &Joystick,
+                                                        &global_Joystick,
                                                         NULL);
         
         Win32ErrorChecking(result, "Create a Device");
@@ -144,8 +142,8 @@ void CreateDevice(HWND Window, HINSTANCE Instance) {
     // TELL THE OS WHAT DATA FORMAT TO EXPECT
     //**************************************
     
-    result = Joystick->lpVtbl->SetDataFormat(Joystick,
-                                             &c_dfDIJoystick2);
+    result = global_Joystick->lpVtbl->SetDataFormat(global_Joystick,
+                                                    &c_dfDIJoystick2);
     
     Win32ErrorChecking(result, "Set Device Data Format");
     
@@ -156,9 +154,9 @@ void CreateDevice(HWND Window, HINSTANCE Instance) {
     // UHHHMMM
     //**************************************
     
-    result = Joystick->lpVtbl->SetCooperativeLevel(Joystick,
-                                                   Window,
-                                                   DISCL_EXCLUSIVE | DISCL_FOREGROUND);
+    result = global_Joystick->lpVtbl->SetCooperativeLevel(global_Joystick,
+                                                          Window,
+                                                          DISCL_EXCLUSIVE | DISCL_FOREGROUND);
     
     Win32ErrorChecking(result, "Set Device Cooperative Levels");
     
@@ -172,8 +170,8 @@ void CreateDevice(HWND Window, HINSTANCE Instance) {
     // Try to print capabilities later
     Capabilities.dwSize = sizeof(DIDEVCAPS);
     
-    result = Joystick->lpVtbl->GetCapabilities(Joystick,
-                                               &Capabilities);
+    result = global_Joystick->lpVtbl->GetCapabilities(global_Joystick,
+                                                      &Capabilities);
     
     Win32ErrorChecking(result, "Get Device Capabilities");
     
@@ -191,32 +189,44 @@ void CreateDevice(HWND Window, HINSTANCE Instance) {
     return;
 }
 
-HRESULT Joystick_Poll(DIJOYSTATE2 *Joystick_State) {
+HRESULT Joystick_Poll(Platform *platform) 
+{
     HRESULT result;
+    DIJOYSTATE2 joystick_state;
     
-    if(Joystick == NULL){
+    if(global_Joystick == NULL)
+    {
         return S_OK;
     }
     
-    result = Joystick->lpVtbl->Poll(Joystick);
-    if(FAILED(result)){
-        result = Joystick->lpVtbl->Acquire(Joystick);
-        while (result == DIERR_INPUTLOST) {
-            result = Joystick->lpVtbl->Acquire(Joystick);
+    result = global_Joystick->lpVtbl->Poll(global_Joystick);
+    
+    if(FAILED(result))
+    {
+        result = global_Joystick->lpVtbl->Acquire(global_Joystick);
+        
+        while (result == DIERR_INPUTLOST) 
+        {
+            result = global_Joystick->lpVtbl->Acquire(global_Joystick);
         }
         
-        
-        if ((result == DIERR_INVALIDPARAM) || (result == DIERR_NOTINITIALIZED)) {
+        if ((result == DIERR_INVALIDPARAM) || (result == DIERR_NOTINITIALIZED)) 
+        {
             return E_FAIL;
         }
-        if (result == DIERR_OTHERAPPHASPRIO) {
+        
+        if (result == DIERR_OTHERAPPHASPRIO) 
+        {
             return S_OK;
         }
     }
-    
-    if (FAILED(result = Joystick->lpVtbl->GetDeviceState(Joystick, sizeof(DIJOYSTATE2), Joystick_State))) {
+    if (FAILED(result = global_Joystick->lpVtbl->GetDeviceState(global_Joystick, sizeof(DIJOYSTATE2), &joystick_state))) 
+    {
         return result; // The device should have been acquired during the Poll()
     }
+    
+    platform->stick_x = joystick_state.lX;
+    platform->stick_y = joystick_state.lY;
     
     return S_OK;
 }

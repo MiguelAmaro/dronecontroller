@@ -1,30 +1,26 @@
 // NOTE(MIGUEL): Should This code go in the windows platfom layer?? and i just keep abastractions and generics here
 #include "LAL.h"
 
-// TODO(MIGUEL): Align struct | get rid of windows typedef
-// NOTE(MIGUEL): change name to device? does this reperesnt the device?
-typedef struct IO_Message
+typedef struct
 {
     HANDLE comm;
-    u8* buffer;
-    DWORD bytes_to_write;
-    DWORD bytes_written;
-    DWORD status;
-} IO_Message;
+    u8* transmit_buffer;
+    u8* recieve_buffer;
+    u16 padding;
+} Device_Comm;
 
-global IO_Message global_Device = {0}; 
+global Device_Comm global_Device = {0}; 
 
 void
-Init_SerialPort(void)
+win32_serial_Port_Init(void)
 {
-    
     // Created An IO Stream to talk with micro controller
     
     HANDLE Comm_Handle;
     
     // NOTE(MIGUEL): How do I know which com it is??
     // TODO(MIGUEL): Find out why comm get initialize with garbage
-    global_Device.comm = CreateFile("\\\\.\\COM3",
+    global_Device.comm = CreateFile("\\\\.\\COM11",
                                     GENERIC_READ | GENERIC_WRITE,
                                     0,
                                     NULL,
@@ -43,12 +39,12 @@ Init_SerialPort(void)
         printf("Opening serial port successful \n");
     }
     
-    DCB DeviceSerialParams = { 0 }; // Initializing DCB structure
+    DCB DeviceSerialParams       = { 0 }; // Initializing DCB structure
     DeviceSerialParams.DCBlength = sizeof(DeviceSerialParams);
-    DeviceSerialParams.BaudRate = CBR_115200;  // Setting BaudRate = 9600
-    DeviceSerialParams.ByteSize = 8;         // Setting ByteSize = 8
-    DeviceSerialParams.StopBits = ONESTOPBIT;// Setting StopBits = 1
-    DeviceSerialParams.Parity   = NOPARITY;  // Setting Parity = None
+    DeviceSerialParams.BaudRate  = 115200    ;    
+    DeviceSerialParams.ByteSize  = 8         ;         
+    DeviceSerialParams.StopBits  = ONESTOPBIT;
+    DeviceSerialParams.Parity    = NOPARITY  ;
     
     SetCommState(global_Device.comm, &DeviceSerialParams);
     
@@ -62,36 +58,50 @@ Init_SerialPort(void)
     
     SetCommTimeouts(global_Device.comm, &TimeoutsComm);
     
-    // Writing 
-    
-    local_persist u8 lpBuffer[] = "b";
-    global_Device.buffer = lpBuffer;
-    DWORD dNoOFBytestoWrite = sizeof(lpBuffer);         // No of bytes to write into the port
-    DWORD dNoOfBytesWritten = 0;     // No of bytes written to the port
-    dNoOFBytestoWrite = sizeof(lpBuffer);
-    
-    global_Device.status = WriteFile(global_Device.comm,        // Handle to the Serial port
-                                     lpBuffer,     // Data to be written to the port
-                                     dNoOFBytestoWrite,  //No of bytes to write
-                                     &dNoOfBytesWritten, //Bytes written
-                                     NULL);
-    
-    
-    // Reading
-    
     DWORD dwEventMask;
+    b32 status = 0;
     
-    global_Device.status =  SetCommMask(global_Device.comm, EV_RXCHAR);
+    status = SetCommMask(global_Device.comm, EV_RXCHAR);
     
-    global_Device.status = WaitCommEvent(global_Device.comm, &dwEventMask, NULL);
+    ASSERT(status);
+    
+    status = WaitCommEvent(global_Device.comm, &dwEventMask, NULL);
+    
+    ASSERT(status);
     
     
+    
+    return;
+}
+
+void
+win32_send_Message(u8 *bytes, u32 size)
+{
+    u32 num_bytes_written = 0;
+    b32 tx_status         = 0; // Transmission
+    
+    tx_status = WriteFile(global_Device.comm, // Handle to the Serial port
+                          bytes,              // Data to be written to the port
+                          size,               // Number of bytes to write
+                          &num_bytes_written, // Bytes written
+                          NULLPTR);
+    ASSERT(tx_status);
+    
+    return;
+}
+
+void
+win32_read_Message(void)
+{
+    // Reading
     //RoundBuffer* SerialBuffer = RoundBuffer_Create(256);
     
     u8 TempChar;
     u8 SerialBuffer[256];
     DWORD NoBytesRead;
     int i = 0;
+    
+    /*
     // What does this do?
     do
     {
@@ -105,10 +115,11 @@ Init_SerialPort(void)
         
         //RoundBuffer_Enqueue(SerialBuffer, &TempChar);// Store Tempchar into buffer
         i++;
-    }while (NoBytesRead > 0);
-    
+    }
+    while (NoBytesRead > 0);
+    */
     //printf((char*)&(RoundBuffer_Dequeue(SerialBuffer)));
-    printf(SerialBuffer);
+    //printf(SerialBuffer);
     
     
     

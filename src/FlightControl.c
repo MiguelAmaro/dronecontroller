@@ -4,11 +4,12 @@
 #include "FlightControl_Helpers.h"
 #include "FlightControl_Entity.h"
 #include "FlightControl_Renderer.h"
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb/stb_image.h"
 #include <stdio.h>
 #include <math.h>
 #include "LAL.h"
+
+// TODO(MIGUEL): 
+
 
 typedef struct App {
     f32 dela_time;
@@ -19,13 +20,7 @@ global App *app = 0;
 global Platform *platform = 0;
 
 global Entity Sprite = {0};
-global Entity Nick = {0};
-
-
-global u32 ufrm_sprite_model     ;
-global u32 ufrm_sprite_color     ; 
-global u32 ufrm_sprite_projection;
-
+global Render_Info sprite_render_info;
 global vec4 color       = { 1.0f, 1.0f, 1.0f };
 global mat4 translation = GLM_MAT4_ZERO_INIT;
 global mat4 scale       = GLM_MAT4_ZERO_INIT;
@@ -34,12 +29,9 @@ global vec3 scalefactor = { 100.0f, 100.0f, 0.0f };
 
 
 
-global Render_Info nick_render_info;
-//global u32 ufrm_nick_model     ;
-//global u32 ufrm_nick_mouse     ;
-//global u32 ufrm_nick_color     ; 
 // NOTE(MIGUEL): Should there just be one projectin matrix for everthing
-//global u32 ufrm_nick_projection;
+global Entity Nick = {0};
+global Render_Info nick_render_info;
 
 global vec4 nick_color       = { 1.0f, 1.0f, 1.0f };
 global mat4 nick_translation = GLM_MAT4_ZERO_INIT;
@@ -74,19 +66,18 @@ App_Init(Platform *platform_)
     
     Sprite.vertices = sprite_vertices;
     
-    GL_Call(glGenVertexArrays(1, &Sprite.vertex_Attributes));
-    GL_Call(glGenBuffers(1, &Sprite.vertex_Buffer));
-    GL_Call(glBindBuffer(GL_ARRAY_BUFFER, Sprite.vertex_Attributes));
-    GL_Call(glBufferData(GL_ARRAY_BUFFER, sizeof(sprite_vertices), sprite_vertices, GL_DYNAMIC_DRAW));
+    OpenGL_VertexBuffer_Create(&(sprite_render_info.vertex_buffer_id), sprite_vertices, sizeof(sprite_vertices));
     
-    GL_Call(glBindVertexArray(Sprite.vertex_Attributes));
+    GL_Call(glGenVertexArrays(1, &sprite_render_info.vertex_attributes_id));
+    GL_Call(glBindVertexArray(sprite_render_info.vertex_attributes_id));
+    
     GL_Call(glEnableVertexAttribArray(0));
     GL_Call(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(f32), (void *)0x00));
     
     
     // THE AFFECTS OF THIS MIGHT NOT BE APPARENT UNSLESS THERE ARE CERTAIN CONDITIONS
-    GL_Call(glGenTextures(1, &Sprite.texture));
-    GL_Call(glBindTexture(GL_TEXTURE_2D, Sprite.texture));
+    GL_Call(glGenTextures(1, &sprite_render_info.texture));
+    GL_Call(glBindTexture(GL_TEXTURE_2D, sprite_render_info.texture));
     // CONFIGUE OPENGL WRAPPING OPTIONS
     GL_Call(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT));
     GL_Call(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT));
@@ -117,27 +108,27 @@ App_Init(Platform *platform_)
     
     
     // THIS SHADER MAyBE FUCKED UP
-    ReadAShaderFile(&Sprite.shader, "../res/shaders/SpriteShader.glsl");
+    ReadAShaderFile(&sprite_render_info.shader, "../res/shaders/SpriteShader.glsl");
     
     
     // NOTE(MIGUEL): ISSUES HERE !!!! 
-    GL_Call(glUseProgram(Sprite.shader));
-    GL_Call(glUniform1i(glGetUniformLocation(Sprite.shader, "sprite_texture"), 1));
+    GL_Call(glUseProgram(sprite_render_info.shader));
+    GL_Call(glUniform1i(glGetUniformLocation(sprite_render_info.shader, "sprite_texture"), 1));
     
     // NOTE(MIGUEL): deleting the folowing 2 lines changes it from black to brown
     
     // FOR LATER
     mat4 projection;
     GL_Call(glm_ortho(0.0f, 800.0f, 600.0f, 0.0f, -1.0f, 1.0f, projection));
-    GL_Call(glUniformMatrix4fv(glGetUniformLocation(Sprite.shader, "projection"), 1, GL_FALSE, (f32 *)projection));
+    GL_Call(glUniformMatrix4fv(glGetUniformLocation(sprite_render_info.shader, "projection"), 1, GL_FALSE, (f32 *)projection));
     
     // UNBIND BUFFER
     GL_Call(glBindBuffer(GL_ARRAY_BUFFER, 0)); 
     GL_Call(glBindVertexArray(0));
     
-    ufrm_sprite_model      = glGetUniformLocation(Sprite.shader, "model");
-    ufrm_sprite_color      = glGetUniformLocation(Sprite.shader, "spriteColor");
-    ufrm_sprite_projection = glGetUniformLocation(Sprite.shader, "projection");
+    sprite_render_info.uniform_model      = glGetUniformLocation(sprite_render_info.shader, "model");
+    sprite_render_info.uniform_color      = glGetUniformLocation(sprite_render_info.shader, "spriteColor");
+    sprite_render_info.uniform_projection = glGetUniformLocation(sprite_render_info.shader, "projection");
     
     
     //~ INIT SPRITE NICK
@@ -146,19 +137,18 @@ App_Init(Platform *platform_)
     
     Nick.vertices = sprite_vertices;
     
-    GL_Call(glGenVertexArrays(1, &Nick.vertex_Attributes));
-    GL_Call(glGenBuffers(1, &Nick.vertex_Buffer));
-    GL_Call(glBindBuffer(GL_ARRAY_BUFFER, Nick.vertex_Attributes));
-    GL_Call(glBufferData(GL_ARRAY_BUFFER, sizeof(sprite_vertices), sprite_vertices, GL_DYNAMIC_DRAW));
+    OpenGL_VertexBuffer_Create(&nick_render_info.vertex_buffer_id, sprite_vertices, sizeof(sprite_vertices));
     
-    GL_Call(glBindVertexArray(Nick.vertex_Attributes));
+    //GL_Call(glBindBuffer(GL_ARRAY_BUFFER, Nick.vertex_Attributes));
+    GL_Call(glGenVertexArrays(1, &nick_render_info.vertex_attributes_id));
+    GL_Call(glBindVertexArray(nick_render_info.vertex_attributes_id));
     GL_Call(glEnableVertexAttribArray(0));
     GL_Call(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(f32), (void *)0x00));
     
     
     // THE AFFECTS OF THIS MIGHT NOT BE APPARENT UNSLESS THERE ARE CERTAIN CONDITIONS
-    GL_Call(glGenTextures(1, &Nick.texture));
-    GL_Call(glBindTexture(GL_TEXTURE_2D, Nick.texture));
+    GL_Call(glGenTextures(1, &nick_render_info.texture));
+    GL_Call(glBindTexture(GL_TEXTURE_2D, nick_render_info.texture));
     // CONFIGUE OPENGL WRAPPING OPTIONS
     GL_Call(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT));
     GL_Call(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT));
@@ -188,28 +178,28 @@ App_Init(Platform *platform_)
     
     
     // THIS SHADER MAyBE FUCKED UP
-    ReadAShaderFile(&Nick.shader, "../res/shaders/Nick.glsl");
+    ReadAShaderFile(&nick_render_info.shader, "../res/shaders/Nick.glsl");
     
     
     // NOTE(MIGUEL): ISSUES HERE !!!! 
-    GL_Call(glUseProgram(Nick.shader));
-    GL_Call(glUniform1i(glGetUniformLocation(Nick.shader, "sprite_texture"), 1));
+    GL_Call(glUseProgram(nick_render_info.shader));
+    GL_Call(glUniform1i(glGetUniformLocation(nick_render_info.shader, "sprite_texture"), 1));
     
     // NOTE(MIGUEL): deleting the folowing 2 lines changes it from black to brown
     
     // FOR LATER
     mat4 nick_projection;
     GL_Call(glm_ortho(0.0f, 800.0f, 600.0f, 0.0f, -1.0f, 1.0f, nick_projection));
-    GL_Call(glUniformMatrix4fv(glGetUniformLocation(Nick.shader, "projection"), 1, GL_FALSE, (f32 *)nick_projection));
+    GL_Call(glUniformMatrix4fv(glGetUniformLocation(nick_render_info.shader, "projection"), 1, GL_FALSE, (f32 *)nick_projection));
     
     // UNBIND BUFFER
     GL_Call(glBindBuffer(GL_ARRAY_BUFFER, 0)); 
     GL_Call(glBindVertexArray(0));
     
-    nick_render_info.uniform_model      = glGetUniformLocation(Nick.shader, "model");
-    nick_render_info.uniform_color      = glGetUniformLocation(Nick.shader, "spriteColor");
-    nick_render_info.uniform_input      = glGetUniformLocation(Nick.shader, "mousePos");
-    nick_render_info.uniform_projection = glGetUniformLocation(Nick.shader, "projection");
+    nick_render_info.uniform_model      = glGetUniformLocation(nick_render_info.shader, "model");
+    nick_render_info.uniform_color      = glGetUniformLocation(nick_render_info.shader, "spriteColor");
+    nick_render_info.uniform_input      = glGetUniformLocation(nick_render_info.shader, "mousePos");
+    nick_render_info.uniform_projection = glGetUniformLocation(nick_render_info.shader, "projection");
     
     return;
 }
@@ -224,12 +214,13 @@ b32 App_Update(Platform *platform_)
         f32 move_speed = -200.0f *  app->dela_time;
         app->dela_time = platform->current_time - platform->last_time;
         
+        // ************************************************
+        // INPUT RESPONSE
+        //*************************************************
         if(platform->key_down[KEY_c])
         {
             app_should_quit = 1;
         }
-        
-        
         // NOTE(MIGUEL): Input only for SRITE AKE GEO(player)
         if(platform->key_down[KEY_w])
         {
@@ -268,7 +259,23 @@ b32 App_Update(Platform *platform_)
             glm_rotate(rotation, glm_rad(10.0f),(vec3){0.0f, 1.0f, 0.0f}); 
             //printf("d\n");
         }
-        
+        {
+            //printf("Stick X: %d | Stick Y: %d \n\r", global_platform.stick_x, global_platform.stick_y);
+            
+            if( platform->stick_x > 32767)
+            {
+                //global_Device.buffer[0] = 'A';
+                
+                win32_send_Message("A", 1);
+                
+            }
+            else if( platform->stick_x < 32767)
+            {
+                //global_Device.buffer[0] = 'B';
+                
+                win32_send_Message("B", 1);
+            }
+        }
     }
     
     // ************************************************
@@ -286,7 +293,7 @@ b32 App_Update(Platform *platform_)
     mat4 nick_model = GLM_MAT4_ZERO_INIT; // constructor
     nick_render_info.matrix_model = (f32 *)&nick_model;
     
-    GL_Call(glUseProgram(Sprite.shader));
+    GL_Call(glUseProgram(sprite_render_info.shader));
     
     if(first_render)
     {
@@ -313,11 +320,11 @@ b32 App_Update(Platform *platform_)
     
     //Helpers_Display_Matrix4(model, "Model Matrix");
     
-    GL_Call(glUniformMatrix4fv(ufrm_sprite_model, 1, GL_FALSE, (f32 *)model));
-    GL_Call(glUniform3f(ufrm_sprite_color, color[0],color[1], color[2]));
+    GL_Call(glUniformMatrix4fv(sprite_render_info.uniform_model, 1, GL_FALSE, (f32 *)model));
+    GL_Call(glUniform3f(sprite_render_info.uniform_color, color[0],color[1], color[2]));
     
     GL_Call(glActiveTexture(GL_TEXTURE1));
-    GL_Call(glBindTexture(GL_TEXTURE_2D, Sprite.texture));
+    GL_Call(glBindTexture(GL_TEXTURE_2D, sprite_render_info.texture));
     
     // Enables the alpha channel
     glEnable(GL_BLEND);
@@ -325,17 +332,17 @@ b32 App_Update(Platform *platform_)
     
     //glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     
-    GL_Call(glBindVertexArray(Sprite.vertex_Attributes));
+    GL_Call(glBindVertexArray(sprite_render_info.vertex_attributes_id));
     GL_Call(glDrawArrays(GL_TRIANGLES, 0, 6));
     GL_Call(glBindVertexArray(0));
     
     //~ SPRITE RENDERER_01
     
-    GL_Call(glUseProgram(Nick.shader));
+    GL_Call(glUseProgram(nick_render_info.shader));
     glm_translate(nick_translation, (vec3){ ( cos(platform->current_time) ), (  sin(platform->current_time) ), 0.0f} );
     glm_mat4_mulN((mat4 *[]){&nick_translation, &nick_scale }, 2, nick_model);
     
-    Renderer_Draw_Sprite(platform, &Nick, &nick_render_info, (f32 *)&nick_color );
+    Renderer_Draw_Sprite(platform, &nick_render_info, (f32 *)&nick_color );
     
     return app_should_quit;
 }

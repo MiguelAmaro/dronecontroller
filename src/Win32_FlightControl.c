@@ -1,5 +1,10 @@
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
 #include <windows.h>
 #include <GLAD/glad.h>
+#include "FlightControl_Program_Options.h"
 #include "FlightControl_FlightStick.c"
 #include "FlightControl_SerialPort.h"
 #include "FlightControl_Platform.h"
@@ -11,19 +16,25 @@
 #include "RoundBuffer.c"
 #include <GL/gl.h>
 #include <WGL/wglext.h>
-
-#include <stdio.h>
 #include <io.h>
 #include <fcntl.h>
+#include <Winsock2.h>
+#include <Ws2tcpip.h>
+#include <strsafe.h>
+//#include <shellapi.h>
+//#include <internal.h>
+#include <conio.h>
 
-// TODO(MIGUEL): Add opengl
+HANDLE g_hChildStd_IN_Rd = NULL;
+HANDLE g_hChildStd_IN_Wr = NULL;
+HANDLE g_hChildStd_OUT_Rd = NULL;
+HANDLE g_hChildStd_OUT_Wr = NULL;
+
+HANDLE g_hInputFile = NULL;
+
 // TODO(MIGUEL): Add openCV
 
 global Platform global_platform = {0};
-
-// NOTE(MIGUEL): move to an app options header file maybe
-#define PERMANENT_STORAGE_SIZE MEGABYTES(64) 
-
 
 // TODO(MIGUEL): Using Windows File API connect to a kinetis board and recive and send input
 
@@ -36,8 +47,214 @@ win32_update_Window(HDC DeviceContext, RECT *ClientRect, int X, int Y, int Width
 LRESULT CALLBACK 
 win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l_param);
 
+void ErrorExit(PTSTR lpszFunction) 
+
+// Format a readable error message, display a message box, 
+// and exit from the application.
+{ 
+    LPVOID lpMsgBuf;
+    LPVOID lpDisplayBuf;
+    DWORD dw = GetLastError(); 
+    
+    FormatMessage(
+                  FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+                  FORMAT_MESSAGE_FROM_SYSTEM |
+                  FORMAT_MESSAGE_IGNORE_INSERTS,
+                  NULL,
+                  dw,
+                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                  (LPTSTR) &lpMsgBuf,
+                  0, NULL );
+    
+    lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, 
+                                      (lstrlen((LPCTSTR)lpMsgBuf)+lstrlen((LPCTSTR)lpszFunction)+40)*sizeof(TCHAR)); 
+    StringCchPrintf((LPTSTR)lpDisplayBuf, 
+                    LocalSize(lpDisplayBuf) / sizeof(TCHAR),
+                    TEXT("%s failed with error %d: %s"), 
+                    lpszFunction, dw, lpMsgBuf); 
+    MessageBox(NULL, (LPCTSTR)lpDisplayBuf, TEXT("Error"), MB_OK); 
+    
+    LocalFree(lpMsgBuf);
+    LocalFree(lpDisplayBuf);
+    ExitProcess(1);
+}
+
+void WriteToPipe(void) 
+
+// Read from a file and write its contents to the pipe for the child's STDIN.
+// Stop when there is no more data. 
+{ 
+    DWORD dwRead, dwWritten; 
+    CHAR chBuf[DEBUG_CONSOLE_BUFFER_SIZE];
+    BOOL bSuccess = FALSE;
+    
+    for (;;) 
+    { 
+        bSuccess = ReadFile(g_hInputFile, chBuf, DEBUG_CONSOLE_BUFFER_SIZE, &dwRead, NULL);
+        if ( ! bSuccess || dwRead == 0 ) break; 
+        
+        bSuccess = WriteFile(g_hChildStd_IN_Wr, chBuf, dwRead, &dwWritten, NULL);
+        if ( ! bSuccess ) break; 
+    } 
+    
+    // Close the pipe handle so the child process stops reading. 
+    
+    if ( ! CloseHandle(g_hChildStd_IN_Wr) ) 
+        ErrorExit(TEXT("StdInWr CloseHandle")); 
+} 
+
+void ReadFromPipe(void) 
+
+// Read output from the child process's pipe for STDOUT
+// and write to the parent process's pipe for STDOUT. 
+// Stop when there is no more data. 
+{ 
+    DWORD dwRead, dwWritten; 
+    CHAR chBuf[DEBUG_CONSOLE_BUFFER_SIZE]; 
+    BOOL bSuccess = FALSE;
+    HANDLE hParentStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    
+    for (;;) 
+    { 
+        bSuccess = ReadFile( g_hChildStd_OUT_Rd, chBuf, DEBUG_CONSOLE_BUFFER_SIZE, &dwRead, NULL);
+        if( ! bSuccess || dwRead == 0 ) break; 
+        
+        bSuccess = WriteFile(hParentStdOut, chBuf, 
+                             dwRead, &dwWritten, NULL);
+        if (! bSuccess ) break; 
+    } 
+} 
+
+internal void
+win32_create_Debug_Console(void)
+{
+    b32 debug_console_success = false;
+    
+    PROCESS_INFORMATION debug_console_process_info = { 0 };
+    STARTUPINFO         debug_console_startup_info = 
+    {
+        .cb         = sizeof(STARTUPINFO),
+        .dwXSize    = 200,
+        .dwYSize    = 800,
+        .hStdError  = g_hChildStd_OUT_Wr,
+        .hStdOutput = g_hChildStd_OUT_Wr,
+        .hStdInput  = g_hChildStd_IN_Rd,
+        .dwFlags    = STARTF_USESIZE | STARTF_USESTDHANDLES
+    };
+    
+    CreateProcessA(NULLPTR,
+                   "child",
+                   NULLPTR,
+                   NULLPTR,
+                   true,
+                   0,
+                   NULLPTR,
+                   NULLPTR,
+                   &debug_console_startup_info,
+                   &debug_console_process_info
+                   );
+    
+    if(!debug_console_success)
+    {
+        ErrorExit(TEXT("CreateProcess"));
+    }
+    else
+    {
+        
+        CloseHandle( debug_console_process_info.hProcess);
+        CloseHandle( debug_console_process_info.hThread );
+        
+        CloseHandle(g_hChildStd_OUT_Wr);
+        CloseHandle(g_hChildStd_IN_Rd);
+    }
+    
+    return;
+}
+
+internal void 
+win32_create_Debug_Pipes(void)
+{
+    SECURITY_ATTRIBUTES saAttr; 
+    
+    printf("\n->Start of parent execution.\n");
+    
+    // Set the bInheritHandle flag so pipe handles are inherited. 
+    
+    saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
+    saAttr.bInheritHandle = TRUE; 
+    saAttr.lpSecurityDescriptor = NULL; 
+    
+    // Create a pipe for the child process's STDOUT. 
+    
+    if ( ! CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0) ) 
+        ErrorExit(TEXT("StdoutRd CreatePipe")); 
+    
+    // Ensure the read handle to the pipe for STDOUT is not inherited.
+    
+    if ( ! SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0) )
+        ErrorExit(TEXT("Stdout SetHandleInformation")); 
+    
+    // Create a pipe for the child process's STDIN. 
+    
+    if (! CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0)) 
+        ErrorExit(TEXT("Stdin CreatePipe")); 
+    
+    // Ensure the write handle to the pipe for STDIN is not inherited. 
+    
+    if ( ! SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0) )
+        ErrorExit(TEXT("Stdin SetHandleInformation")); 
+    
+    // Create the child process. 
+    
+    win32_create_Debug_Console();
+    
+    return;
+}
+
 int CALLBACK 
-WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCode) {
+WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCode) 
+{
+    //win32_create_Debug_Pipes();
+    //win32_create_Debug_Console();
+    
+    //LPWSTR argv = GetCommandLineW();
+    //int argc;
+    
+    //argv = CommandLineToArgvA(GetCommandLine(), &argc);
+    //__getmainargs(&argc, &argv, NULLPTR ,0, NULLPTR );
+    //if (argc == 1) 
+    //{
+    //ErrorExit(TEXT("Please specify an input file.\n")); 
+    //}
+    
+    //HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    AllocConsole();
+    freopen("CONOUT$", "w", stdout);
+    
+    HANDLE Debug_console = GetStdHandle(STD_OUTPUT_HANDLE );
+    /*
+    g_hInputFile = CreateFileW(&argv[1], 
+                               GENERIC_READ, 
+                               0, 
+                               NULL, 
+                               OPEN_EXISTING, 
+                               FILE_ATTRIBUTE_READONLY, 
+                               NULL); 
+    
+    if ( g_hInputFile == INVALID_HANDLE_VALUE ) 
+    {
+        ErrorExit(TEXT("CreateFile")); 
+    }
+    // Write to the pipe that is the standard input for a child process. 
+    // Data is written to the pipe's buffers, so it is not necessary to wait
+    // until the child process is running before writing data.
+    
+    WriteToPipe(); 
+    printf( "\n->Contents of %s written to child STDIN pipe.\n", "Win32_FlightControl.exe");
+    
+    */
+    //HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    
     //**************************************
     // MAIN WINDOW SETUP
     //
@@ -58,7 +275,8 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
     // REGISTER WINDOW CLASS WITH OS
     //**************************************
     
-    if(RegisterClass(&WindowClass)) {
+    if(RegisterClass(&WindowClass)) 
+    {
         //**************************************
         // MAIN WINDOW SETUP
         //
@@ -72,20 +290,19 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                                      CW_USEDEFAULT, CW_USEDEFAULT,
                                      0, 0, Instance, 0);
         
+        //AllocConsole();
+        //AttachConsole(GetProcessId(Window));
+        //HANDLE Debug_console = GetStdHandle(STD_INPUT_HANDLE);
+        
         // TODO: figure out why app crashes if stick is not connected
         //This is for the joystick!!!
         CreateDevice(Window, Instance);
         
         HDC gl_device_context = GetDC(Window);
         
-        
         HGLRC gl_real_context = win32_Init_OpenGL(gl_device_context);
         
         ASSERT(gladLoadGL());
-        
-        //ASSERT(gladLoadGLLoader((GLADloadproc)wglGetProcAddress));
-        
-        //printf("OPENGL VERSION: %s \n", glGetString(GL_VERSION));
         
         u32 gl_major = 0;
         u32 gl_minor = 0;
@@ -94,12 +311,10 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         glGetIntegerv(GL_MINOR_VERSION, &gl_minor);
         printf("OPENGL VERSION: %d.%d \n", gl_major, gl_minor);
         
-        
-        
         // NOTE(MIGUEL): This should Init on users command
-        Init_SerialPort();
+        win32_serial_Port_Init();
         
-        // Platform Initialization
+        // PLATFORM INITIALIZATION
         {
             global_platform.permanent_storage_size = PERMANENT_STORAGE_SIZE;
             global_platform.permanent_storage = VirtualAlloc(0, 
@@ -115,9 +330,9 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         
         if(Window)
         {
-            DIJOYSTATE2 Joystick_State = {0};
-            int XOffset = 0;
-            int YOffset = 0;
+            
+            //int XOffset = 0;
+            //int YOffset = 0;
             
             MSG Message;
             
@@ -156,36 +371,26 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 }
                 
                 //~ JOYSTICK & SERIALPORT 
+                
+                Joystick_Poll(&global_platform);
+                
+                u8 TempChar;
+                u8 SerialBuffer[256];
+                DWORD NoBytesRead;
+                int i = 0;
+                do
                 {
-                    Joystick_Poll(&Joystick_State);
-                    /*
-                    printf("Stick X: %d | Stick Y: %d \n\r",
-                           Joystick_State.lX,
-                           Joystick_State.lY);
-                    */
+                    ReadFile( global_Device.comm,           //Handle of the Serial port
+                             &TempChar,       //Temporary character
+                             sizeof(TempChar),//Size of TempChar
+                             &NoBytesRead,    //Number of bytes read
+                             NULL);
                     
-                    /*
-                    // Send command to mcu over IO steam | controlled by joystick 
-                    if( Joystick_State.lX > 32767){
-                        global_Device.buffer[0] = 'A';
-                        
-                        global_Device.status = WriteFile(global_Device.comm,        // Handle to the Serial port
-                                                         global_Device.buffer,           // Data to be written to the port
-                                                         global_Device.bytes_to_write,  //No of bytes to write
-                                                         &global_Device.bytes_written, //Bytes written
-                                                         NULL);
-                    }
-                    else if( Joystick_State.lX < 32767){
-                        global_Device.buffer[0] = 'B';
-                        
-                        global_Device.status = WriteFile(global_Device.comm,        // Handle to the Serial port
-                                                         global_Device.buffer,           // Data to be written to the port
-                                                         global_Device.bytes_to_write,  //No of bytes to write
-                                                         &global_Device.bytes_written, //Bytes written
-                                                         NULL);
-                    }
-                    */
+                    SerialBuffer[i] = TempChar;
+                    i++;
                 }
+                while (NoBytesRead > 0 && i < 256);
+                printf("HOST: Recieving - %s \n", SerialBuffer);
                 
                 //~ WIN32 RENDERING
                 {
@@ -204,7 +409,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                     
                     ++YOffset;
                     ++XOffset;
-*/
+                    */
                 }
                 
                 //~ OPENGL RENDERING
@@ -240,8 +445,18 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                         //printf("Wait data: %lld <- ( %lld - %lld ) \n", (end_wait_time_data.QuadPart - begin_wait_time_data.QuadPart), end_wait_time_data.QuadPart, begin_wait_time_data.QuadPart);
                     }
                 }
+                /*
+                DWORD numchars;
+                COORD coord = { 0, 0 };
+                u8 *Clear_string = "blahhhhhh"; 
+                WriteConsoleOutputCharacter(Debug_console, Clear_string,4000,coord,&numchars);
+                SetConsoleCursorPosition(Debug_console,coord);
+                */
+                
             }
             CloseHandle(global_Device.comm);//Closing the Serial Port
+            FreeConsole();
+            
         }
         else
         {
@@ -335,10 +550,10 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
         }
         case WM_MOUSEMOVE:
         {
-            global_platform.mouse_x_direction = global_platform.mouse_x < (l_param & 0x0000FFFF)? (u32)(1): (u32)(-1);
+            //global_platform.mouse_x_direction = global_platform.mouse_x < (l_param & 0x0000FFFF)? (u32)(1): (u32)(-1);
             global_platform.mouse_x = (l_param & 0x0000FFFF);
             
-            global_platform.mouse_y_direction = global_platform.mouse_y < (l_param & 0xFFFF0000 >> 16)? (u32)(-1): (u32)(1);
+            //global_platform.mouse_y_direction = global_platform.mouse_y < (l_param & 0xFFFF0000 >> 16)? (u32)(-1): (u32)(1);
             global_platform.mouse_y = ((l_param & 0xFFFF0000) >> 16);
             
         }

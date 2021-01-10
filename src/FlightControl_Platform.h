@@ -26,15 +26,13 @@ typedef struct Platform
     b32 key_down[KEY_MAX];
     f32 frames_per_second_target;
     f32 mouse_x;
-    f32 mouse_last_x;
-    s32 mouse_x_direction;
     f32 mouse_y;
-    f32 mouse_last_y;
-    s32 mouse_y_direction;
     b32 mouse_leftb_down;
     b32 mouse_leftb_pressed;
     b32 mouse_rightb_down;
     b32 mouse_rightb_pressed;
+    s32 stick_x;
+    s32 stick_y;
     
     // TIME
     f32 current_time;
