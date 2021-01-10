@@ -8,11 +8,17 @@
 #include <math.h>
 #include "LAL.h"
 
-// TODO(MIGUEL): 
+// TODO(MIGUEL): App cannnot Crash when stick is not connected
+// TODO(MIGUEL): App cannnot Crash when MCU is not connected
+// TODO(MIGUEL): App should give use an oppertunity to connect a device(stick, mcu) thoughout app life time
+// TODO(MIGUEL): Integrate FreeType library
+// TODO(MIGUEL): Implement a simple gui
+// TODO(MIGUEL): GUI: No cursor, Buttons with key
+// TODO(MIGUEL): Integrate Opencv once app has access to camera feed
 
 
 typedef struct App {
-    f32 dela_time;
+    f32 delta_time;
 } App;
 
 
@@ -211,8 +217,8 @@ b32 App_Update(Platform *platform_)
     
     app = platform->permanent_storage;
     {
-        f32 move_speed = -200.0f *  app->dela_time;
-        app->dela_time = platform->current_time - platform->last_time;
+        f32 move_speed = -200.0f *  app->delta_time;
+        app->delta_time = platform->current_time - platform->last_time;
         
         // ************************************************
         // INPUT RESPONSE
