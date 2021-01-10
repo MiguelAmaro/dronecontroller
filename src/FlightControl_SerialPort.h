@@ -1,11 +1,12 @@
 // NOTE(MIGUEL): Should This code go in the windows platfom layer?? and i just keep abastractions and generics here
+#include "RingBuffer.h"
 #include "LAL.h"
 
 typedef struct
 {
     HANDLE comm;
-    u8* transmit_buffer;
-    u8* recieve_buffer;
+    RingBuffer transmit_queue;
+    RingBuffer recieve_queue;
     u16 padding;
 } Device_Comm;
 

@@ -260,21 +260,12 @@ b32 App_Update(Platform *platform_)
             //printf("d\n");
         }
         {
-            //printf("Stick X: %d | Stick Y: %d \n\r", global_platform.stick_x, global_platform.stick_y);
+            printf("Stick X: %d | Stick Y: %d \n\r", platform->stick_x, platform->stick_y);
+            u8 turn_value = ( 255 * ( (f32)platform->stick_x / 65535 ) );
+            printf("Turn Value: %d \n", turn_value);
             
-            if( platform->stick_x > 32767)
-            {
-                //global_Device.buffer[0] = 'A';
-                
-                win32_send_Message("A", 1);
-                
-            }
-            else if( platform->stick_x < 32767)
-            {
-                //global_Device.buffer[0] = 'B';
-                
-                win32_send_Message("B", 1);
-            }
+            win32_send_Message( &turn_value, 1);
+            
         }
     }
     
