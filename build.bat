@@ -22,7 +22,7 @@ ECHO ************************************************************
 PUSHD build
 
 CALL "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
-SET path=F:\Dev\FlightStick_Win32\build;%path%
+SET path=F:\Dev\FlightControl\build;%path%
 
 ECHO ====================     WINDOWS          ====================
 CALL cl %Compiler_Flags% %Include_Directories% %Sources% /link %Libraries% 
