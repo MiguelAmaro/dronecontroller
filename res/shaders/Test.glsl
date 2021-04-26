@@ -1,5 +1,0 @@
-
-//~VERT SECTION
-text
-//~FRAG SECTION
-text

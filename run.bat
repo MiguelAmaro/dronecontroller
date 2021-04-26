@@ -1,6 +1,6 @@
 @ECHO OFF
 PUSHD build
 
-Win32_FlightControl.exe
+win32_fc.exe
 
 POPD
