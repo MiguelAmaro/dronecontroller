@@ -3,5 +3,5 @@
 #FILETYPES
 
 #FOLDERS
-/debug
-/build
+debug/
+build/
