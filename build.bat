@@ -1,6 +1,6 @@
 @echo off
 
-if not EXIST build mkdir build
+if not exist build mkdir build
 
 rem ====================    PROJECT/FILES      ====================
 set PROJECT_NAME=dc
@@ -37,7 +37,7 @@ pushd build
 
 set path=%path%;F:\Dev\FlightControl\build
 
-echo ====================     WINDOWS          ====================
+rem ====================     WINDOWS          ====================
 call cl %MSVC_FLAGS% %MSVC_SEARCH_DIRS% %SOURCES% /link %MSVC_LIBS% 
 
 popd
