@@ -23,6 +23,7 @@ load_paths =
     {
         { .path =   ".", .recursive = false, .relative = true },
         { .path = "src", .recursive = false, .relative = true },
+        { .path = "res/shaders", .recursive = false, .relative = true },
     }
 };
 

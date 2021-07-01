@@ -19,8 +19,7 @@ float plot(vec2 st, float throttle_value)
 {   
 	float high = 0.0001f + throttle_value;
 	float low  = 0.0f + throttle_value;
-    return smoothstep(high, low, st.y) -
-		   smoothstep(high + 0.4f, low + 0.4f, st.y);
+    return smoothstep(high, low, st.y) - smoothstep(high + 0.4f, low + 0.4f, st.y);
 }
 
 

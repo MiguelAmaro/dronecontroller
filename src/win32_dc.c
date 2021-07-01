@@ -164,7 +164,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         GL_Call(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(f32), (void *)0x00));
         
         // THIS SHADER MAyBE FUCKED UP
-        Shader_get_source(&sprite_render_info.shader, "../res/shaders/SpriteShader.glsl");
+        Shader_get_source(&sprite_render_info.shader, "../res/shaders/throttle.glsl");
         
         // UNBIND BUFFER
         GL_Call(glBindBuffer(GL_ARRAY_BUFFER, 0)); 
