@@ -1,6 +1,6 @@
 version(2);
 
-project_name =  "Flight Control";
+project_name =  "Drone Controller";
 
 patterns = {
     "*.c",
@@ -13,7 +13,6 @@ patterns = {
 
 blacklist_patterns =
 {
-    ".*",
     ".git",
     ".build",
 };
@@ -22,6 +21,7 @@ load_paths =
 {
 	.win = 
     {
+        { .path =   ".", .recursive = false, .relative = true },
         { .path = "src", .recursive = false, .relative = true },
     }
 };
@@ -54,7 +54,8 @@ commands =
 	},
 };
 
-fkey_command = {
+fkey_command =
+{
     .F1 = "build",
     
     .F12 = "run",
