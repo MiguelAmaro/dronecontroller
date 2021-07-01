@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "LAL.h"
-
+// hell
 // TODO(MIGUEL): App cannnot Crash when stick is not connected
 // TODO(MIGUEL): App cannnot Crash when MCU is not connected
 // TODO(MIGUEL): App should give use an oppertunity to connect a device(stick, mcu) thoughout app life time
