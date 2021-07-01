@@ -1,11 +1,11 @@
-@ECHO OFF
+@echo off
 
-SET Debug_File= .\debug\FlightControl.rdbg
-SET Executable= .\build\Win32_FlightControl.exe
+set DEBUG_FILE= .\debug\FlightControl.rdbg
+set EXE= .\build\Win32_FlightControl.exe
 
-CALL F:\Dev_Tools\RemedyBG\release_0.3.5.0\remedybg.exe %Debug_File%
+call F:\Dev_Tools\RemedyBG\release_0.3.5.0\remedybg.exe %DEBUG_FILE%
 
-PAUSE
+pause
 
 
 
