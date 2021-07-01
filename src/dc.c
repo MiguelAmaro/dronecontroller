@@ -1,9 +1,9 @@
-#include "fc_platform.h"
-#include "fc_openGL.h"
-#include "fc_shader.h"
-#include "fc_helpers.h"
-#include "fc_entity.h"
-#include "fc_renderer.h"
+#include "dc_platform.h"
+#include "dc_openGL.h"
+#include "dc_shader.h"
+#include "dc_helpers.h"
+#include "dc_entity.h"
+#include "dc_renderer.h"
 #include <stdio.h>
 #include <math.h>
 #include "LAL.h"

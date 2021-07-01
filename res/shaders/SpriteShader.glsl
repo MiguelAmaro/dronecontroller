@@ -15,9 +15,12 @@ out vec4 FragColor;
 uniform float throttle_value;
 uniform uvec2 size;
 
-float plot(vec2 st) 
-{    
-    return smoothstep(0.0001, 0.0, abs(st.y - st.x));
+float plot(vec2 st, float throttle_value) 
+{   
+	float high = 0.0001f + throttle_value;
+	float low  = 0.0f + throttle_value;
+    return smoothstep(high, low, st.y) -
+		   smoothstep(high + 0.4f, low + 0.4f, st.y);
 }
 
 
@@ -30,7 +33,7 @@ void main()
     vec3 color = vec3(y);
     
     // Plot a line
-    float pct = plot(st);
+    float pct = plot(st, throttle_value);
     color = (1.0-pct)*color+pct*vec3(0.0,throttle_value,0.0);
     
     FragColor = vec4(color, 1.0f);

@@ -2,7 +2,7 @@
 #ifndef FLIGHTCONTROL_OPENGL_H
 #define FLIGHTCONTROL_OPENGL_H
 
-#include <Windows.h>
+#include <windows.h>
 #include <GLAD/glad.h>  // NOTE(MIGUEL): Causes SATUS_ACCESS_VIOLATION! FUCK USING GLAD
 //#include <GL/gl.h> 
 #include <cglm/cglm.h>

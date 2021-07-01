@@ -2,8 +2,8 @@
 
 #ifndef FLIGHTCONTROL_RENDERER_H
 #define FLIGHTCONTROL_RENDERER_H
-#include "fc_entity.h"
-#include "fc_platform.h"
+#include "dc_entity.h"
+#include "dc_platform.h"
 #include "LAL.h"
 
 // NOTE(MIGUEL): Maybe jumping the gun with a struct

@@ -2,7 +2,7 @@
 
 // NOTE(MIGUEL): may need to support more version
 #define DIRECTINPUT_VERSION 0x0800
-#include "fc_platform.h"
+#include "dc_platform.h"
 #include "LAL.h"
 #include <windows.h>
 #include <dinput.h>

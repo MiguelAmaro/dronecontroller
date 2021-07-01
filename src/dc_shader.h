@@ -2,8 +2,8 @@
 #ifndef FLIGHTCONTROL_SHADER_H
 #define FLIGHTCONTROL_SHADER_H
 // NOTE(MIGUEL): Why don't i have to include FC_OpenGL.h
-#include "fc_fileIO.h"
-#include "fc_renderer.h"
+#include "dc_fileio.h"
+#include "dc_renderer.h"
 //#include "FlightControl_OpenGL.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"

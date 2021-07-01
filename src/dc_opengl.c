@@ -1,4 +1,4 @@
-#include "fc_opengl.h"
+#include "dc_opengl.h"
 
 //~ PLATFORM INDEPENDENT
 // TODO(MIGUEL): Change GL_ to OpenGL_

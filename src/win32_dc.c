@@ -4,12 +4,12 @@
 
 #include <windows.h>
 #include <GLAD/glad.h>
-#include "fc_Program_Options.h"
+#include "dc_Program_Options.h"
 #include "win32_directinput.c"
-#include "fc_SerialPort.h"
-#include "fc_Platform.h"
-#include "fc_OpenGL.h"
-#include "fc.c"
+#include "dc_serialport.h"
+#include "dc_platform.h"
+#include "dc_opengl.h"
+#include "dc.c"
 #include <stdio.h>
 #include <string.h>
 #include "LAL.h"
@@ -230,7 +230,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 // NOTE(MIGUEL): rename stick_is_inithalized
                 if(global_platform.stick_is_initialized)
                 {
-                    win32_DirectInput_throttle_poll(g_throttle   , &global_platform);
+                    win32_DirectInput_throttle_poll   (g_throttle   , &global_platform);
                     win32_DirectInput_flightstick_poll(g_flightstick, &global_platform);
                 }
                 

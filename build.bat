@@ -1,45 +1,45 @@
-@ECHO OFF
-IF NOT EXIST build MKDIR build
+@echo off
 
-REM ====================    PROJECT/FILES      ====================
-SET Project_Name=fc
-SET Sources= ..\src\win32_%Project_Name%.c ..\src\%Project_Name%_opengl.c ..\lib\glad\src\glad.c
+if not EXIST build mkdir build
 
-REM ====================    COMPILER(MSVC)     ====================
-SET Compiler_Common= -nologo
+rem ====================    PROJECT/FILES      ====================
+set PROJECT_NAME=dc
+set SOURCES= ..\src\win32_%PROJECT_NAME%.c ..\src\%PROJECT_NAME%_opengl.c ..\lib\glad\src\glad.c
 
-SET Warning= -wd4700
+rem ====================    COMPILER(MSVC)     ====================
+set MSVC_WARNINGS= -wd4700
 
-SET Compiler_Flags= %Compiler_Common% -Zi %Warning%  
+set MSVC_FLAGS= %MSVC_WARNINGS% -nologo -Zi
 
-SET Include_Directories= ^
+set MSVC_SEARCH_DIRS= ^
 -I ..\lib\ ^
 -I ..\lib\freetype2\include\
 
-SET Libraries= ^
-User32.lib ^
-Gdi32.lib ^
-Dinput8.lib ^
-Dxguid.lib ^
-Opengl32.lib ^
-Kernel32.lib ^
-Ws2_32.lib ^
-Shell32.lib ^
+rem ====================     LINKER(MSVC)       ====================
+set MSVC_LIBS= ^
+user32.lib ^
+gdi32.lib ^
+dinput8.lib ^
+dxguid.lib ^
+opengl32.lib ^
+kernel32.lib ^
+ws2_32.lib ^
+shell32.lib ^
 ..\lib\bin\cglm.lib ^
 ..\lib\freetype2\dlls\win64\freetype.lib
 
 
 
-REM ************************************************************
-REM **********              START BUILD               **********
-REM ************************************************************
-PUSHD build
+rem ************************************************************
+rem **********              START BUILD               **********
+rem ************************************************************
+pushd build
 
-SET PATH=%PATH%;F:\Dev\FlightControl\build
+set path=%path%;F:\Dev\FlightControl\build
 
-ECHO ====================     WINDOWS          ====================
-CALL cl %Compiler_Flags% %Include_Directories% %Sources% /link %Libraries% 
+echo ====================     WINDOWS          ====================
+call cl %MSVC_FLAGS% %MSVC_SEARCH_DIRS% %SOURCES% /link %MSVC_LIBS% 
 
-POPD
+popd
 
-PAUSE
+pause
