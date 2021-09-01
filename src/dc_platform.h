@@ -1,7 +1,7 @@
 /* date = January 4th 2021 6:48 pm */
 
-#ifndef FLIGHTCONTROL_PLATFORM_H
-#define FLIGHTCONTROL_PLATFORM_H
+#ifndef DRONECONTROLLER_PLATFORM_H
+#define DRONECONTROLLER_PLATFORM_H
 
 #include "LAL.h"
 
@@ -12,7 +12,8 @@ enum {
     KEY_MAX
 };
 
-typedef struct
+typedef struct platform platform;
+struct platform
 {
     b32 quit;
     u32 window_height;
@@ -46,7 +47,7 @@ typedef struct
     // TIME
     f32 current_time;
     f32 last_time;
-} Platform;
+};
 
 
-#endif //FLIGHTCONTROL_PLATFORM_H
+#endif //DRONECONTROLLER_PLATFORM_H

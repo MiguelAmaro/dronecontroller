@@ -17,66 +17,23 @@
 // TODO(MIGUEL): Integrate Opencv once app has access to camera feed
 
 
-typedef struct
+typedef struct app_state app_state;
+struct app_state
 {
     u8 throttle_value;
     f32 delta_time;
-} App;
+};
 
-typedef struct
+typedef struct app_backbuffer app_backbuffer;
+struct app_backbuffer
 {
     void *data           ;
     s32   width          ;
     s32   height         ;
     s32   bytes_per_pixel;
-} App_back_buffer;
+};
 
-global App *app = 0;
-global Platform *platform = 0;
-
-void
-App_Init(Platform *platform_)
-{
-    return;
-}
-
-b32 App_Update(Platform *platform_)
-{
-    b32 app_should_quit = 0;
-    platform = platform_;
-    
-    app = platform->permanent_storage;
-    {
-        f32 move_speed  = -200.0f *  app->delta_time;
-        app->delta_time = platform->current_time - platform->last_time;
-        
-        // ************************************************
-        // INPUT RESPONSE
-        //*************************************************
-        if(platform->key_down[KEY_q])
-        {
-            app_should_quit = 1;
-        }
-        if(platform->key_down[KEY_c])
-        {
-            // TODO(MIGUEL): Should connect to a board
-        }
-        // NOTE(MIGUEL): Input only for SRITE AKE GEO(player)
-        if(platform->key_down[KEY_w])
-        {
-            //glm_translate(translation, (vec3){0.0f, move_speed , 0.0f} );
-            //printf("w\n");
-        }
-        {
-            app->throttle_value = 255.0f * (platform->throttle);
-            printf("%d\n", app->throttle_value);
-        }
-    }
-    
-    return app_should_quit;
-}
-
-internal void RenderWeirdGradient(App_back_buffer *buffer, int offset_x, int offset_y)
+internal void RenderWeirdGradient(app_backbuffer *buffer, int offset_x, int offset_y)
 {
     int width  = buffer->width ;
     int height = buffer->height;
@@ -112,3 +69,56 @@ internal void RenderWeirdGradient(App_back_buffer *buffer, int offset_x, int off
     return;
 }
 
+
+
+void
+App_Init(platform *Platform_)
+{
+    return;
+}
+
+b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
+{
+    b32 app_should_quit = 0;
+    
+    app_state *AppState = (app_state *)Platform->permanent_storage;
+    {
+        f32 MoveSpeed  = -200.0f *  AppState->delta_time;
+        AppState->delta_time = Platform->current_time - Platform->last_time;
+        
+        // ************************************************
+        // INPUT RESPONSE
+        //*************************************************
+        if(Platform->key_down[KEY_q])
+        {
+            app_should_quit = 1;
+        }
+        if(Platform->key_down[KEY_c])
+        {
+            // TODO(MIGUEL): Should connect to a board
+        }
+        // NOTE(MIGUEL): Input only for SRITE AKE GEO(player)
+        if(Platform->key_down[KEY_w])
+        {
+            //glm_translate(translation, (vec3){0.0f, move_speed , 0.0f} );
+            //printf("w\n");
+        }
+        {
+            AppState->throttle_value = 255.0f * (Platform->throttle);
+            printf("%d\n", AppState->throttle_value);
+        }
+        
+        // NOTE(MIGUEL): this will get clear if when reloading function dynmical from dll
+        local_persist XOffset = 0;
+        local_persist YOffset = 0;
+        
+        RenderWeirdGradient(Backbuffer, XOffset,
+                            YOffset * AppState->throttle_value);
+        
+        
+        ++YOffset;
+        ++XOffset;
+    }
+    
+    return app_should_quit;
+}

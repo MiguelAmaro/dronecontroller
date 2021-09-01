@@ -31,25 +31,28 @@
 // global FT_Library  g_freetype_lib;
 
 //TODO(MIGUEL): Move back to the platform layer
-global BITMAPINFO BitmapInfo;
-global void *BitmapMemory;
-global int BitmapWidth;
-global int BitmapHeight;
-global int BytesPerPixel = 4;
+global BITMAPINFO g_BitmapInfo;
+global void *g_BitmapMemory;
+global int g_BitmapWidth;
+global int g_BitmapHeight;
+global int g_BytesPerPixel = 4;
 
 
 global Entity Sprite    = {0};
 global Render_info sprite_render_info;
 global vec4 color       = { 1.0f, 1.0f, 1.0f };
-global mat4 translation = GLM_MAT4_ZERO_INIT;
-global mat4 scale       = GLM_MAT4_ZERO_INIT;
-global mat4 rotation    = GLM_MAT4_ZERO_INIT;
+global mat3 translation = GLM_MAT3_ZERO_INIT;
+global mat3 scale       = GLM_MAT3_ZERO_INIT;
+global mat3 rotation    = GLM_MAT3_ZERO_INIT;
 global vec3 scalefactor = { 100.0f, 100.0f, 0.0f };
 
-#define INITIAL_WINDOW_WIDTH  (400)
-#define INITIAL_WINDOW_HEIGHT (400)
+// NOTE(MIGUEL): this is controlling the window screen coordinates
+#define INITIAL_WINDOW_COORD_X (10)
+#define INITIAL_WINDOW_COORD_Y (10)
+#define INITIAL_WINDOW_WIDTH  (600)
+#define INITIAL_WINDOW_HEIGHT (1000)
 
-global Platform global_platform = {0};
+global platform g_Platform = {0};
 
 internal void 
 win32_resize_DIB_Section(int Width, int Height);
@@ -107,8 +110,8 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         HWND Window = CreateWindowEx(0, WindowClass.lpszClassName,
                                      "FlighControl",
                                      WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+                                     INITIAL_WINDOW_COORD_X, INITIAL_WINDOW_COORD_Y,
                                      INITIAL_WINDOW_WIDTH, INITIAL_WINDOW_HEIGHT,
-                                     400, 400,
                                      0, 0, Instance, 0);
         
         
@@ -127,30 +130,30 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         
         // PLATFORM INITIALIZATION
         {
-            global_platform.permanent_storage_size = PERMANENT_STORAGE_SIZE;
-            global_platform.permanent_storage      = VirtualAlloc(0, 
-                                                                  global_platform.permanent_storage_size,
-                                                                  MEM_COMMIT | MEM_RESERVE,
-                                                                  PAGE_READWRITE);
+            g_Platform.permanent_storage_size = PERMANENT_STORAGE_SIZE;
+            g_Platform.permanent_storage      = VirtualAlloc(0, 
+                                                             g_Platform.permanent_storage_size,
+                                                             MEM_COMMIT | MEM_RESERVE,
+                                                             PAGE_READWRITE);
             
-            global_platform.frames_per_second_target = 60.0f;
+            g_Platform.frames_per_second_target = 60.0f;
         }
         
-        App_Init(&global_platform);
+        App_Init(&g_Platform);
         
         //~ INIT OPENGL RENDER STUFF
         
         // INIT SPRITE
         
-        f32 sprite_vertices[] = { 
-            // pos     
-            0.0f, 0.0f,
-            1.0f, 0.0f,
-            0.0f, 1.0f,
+        f32 sprite_vertices[] =
+        {
+            -1.0f, -1.0f,
+            1.0f, -1.0f,
+            -1.0f, 1.0f,
             
-            1.0f, 0.0f,
+            1.0f, -1.0f,
             1.0f, 1.0f,
-            0.0f, 1.0f,
+            -1.0f, 1.0f,
         };
         
         Sprite.vertices = sprite_vertices;
@@ -171,16 +174,16 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         GL_Call(glBindVertexArray(0));
         
         sprite_render_info.uniform_throttle = glGetUniformLocation(sprite_render_info.shader, "throttle_value"  );
-        u32 throttle_size = glGetUniformLocation(sprite_render_info.shader, "size"  );
-        
+        u32 ThrottleSizeUniform      = glGetUniformLocation(sprite_render_info.shader, "size"  );
+        u32 ThrottleTransformUniform = glGetUniformLocation(sprite_render_info.shader, "Transform"  );
         
         if(Window)
         {
             MSG Message;
             
             
-            global_platform.serialport_is_initialized = win32_SerialPort_device_init ();
-            global_platform.     stick_is_initialized = win32_DirectInput_init(Window, Instance);
+            g_Platform.serialport_is_initialized = win32_SerialPort_device_init ();
+            g_Platform.     stick_is_initialized = win32_DirectInput_init(Window, Instance);
             
             
             s64 performance_counter_frequency   = 1;
@@ -200,12 +203,12 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
             //
             // MESSAGE PROCESSING AND RENDERING
             //**************************************
-            while(!global_platform.quit)
+            while(!g_Platform.quit)
             {
                 
-                global_platform.last_time     = global_platform.current_time;
-                global_platform.current_time += 1 / global_platform.frames_per_second_target;
-                s64 desired_frame_time_counts = performance_counter_frequency / global_platform.frames_per_second_target;
+                g_Platform.last_time     = g_Platform.current_time;
+                g_Platform.current_time += 1 / g_Platform.frames_per_second_target;
+                s64 desired_frame_time_counts = performance_counter_frequency / g_Platform.frames_per_second_target;
                 
                 QueryPerformanceCounter(&begin_frame_time_data);
                 
@@ -214,11 +217,20 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 {
                     if(Message.message == WM_QUIT)
                     {
-                        global_platform.quit = true;
+                        g_Platform.quit = true;
                     }
                     TranslateMessage(&Message);
                     DispatchMessage (&Message);
                 }
+                
+                //~ DYNAMIC RELOAD
+                /// application layer reload
+                
+                
+                /// opengl shader reload
+                
+                
+                /// directx11 shader reload
                 
                 
                 // ************************************************
@@ -228,15 +240,15 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 //~ FLIGHTSTICK
                 
                 // NOTE(MIGUEL): rename stick_is_inithalized
-                if(global_platform.stick_is_initialized)
+                if(g_Platform.stick_is_initialized)
                 {
-                    win32_DirectInput_throttle_poll   (g_throttle   , &global_platform);
-                    win32_DirectInput_flightstick_poll(g_flightstick, &global_platform);
+                    win32_DirectInput_throttle_poll   (g_throttle   , &g_Platform);
+                    win32_DirectInput_flightstick_poll(g_flightstick, &g_Platform);
                 }
                 
                 //~ SERIALPORT 
                 
-                if(global_platform.serialport_is_initialized)
+                if(g_Platform.serialport_is_initialized)
                 {
                     win32_SerialPort_recieve_data();
                 }
@@ -245,7 +257,13 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 // ************************************************
                 // PROCESSING
                 //*************************************************
-                global_platform.quit |= App_Update(&global_platform);
+                app_backbuffer AppRenderBuffer = { 0 };
+                AppRenderBuffer.data = g_BitmapMemory;
+                AppRenderBuffer.width = g_BitmapWidth;
+                AppRenderBuffer.height = g_BitmapHeight;
+                AppRenderBuffer.bytes_per_pixel = g_BytesPerPixel;
+                
+                g_Platform.quit |= App_Update(&AppRenderBuffer, &g_Platform);
                 
                 
                 // ************************************************
@@ -259,34 +277,27 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 //~ SERIALPORT
                 
-                if(global_platform.serialport_is_initialized)
+                if(g_Platform.serialport_is_initialized)
                 {
-                    win32_SerialPort_send_data( &(app->throttle_value), sizeof(u8));
+                    u8 ThrottleValue = 255.0f * (g_Platform.throttle);
+                    win32_SerialPort_send_data( &ThrottleValue, sizeof(u8));
                 }
                 printf("%s \n\r", g_SerialPort_buffer);
                 
                 //~ Software RENDERING
-                {
-                    /*
-                    RenderWeirdGradient(XOffset - Joystick_State.lX * .5,
-                                        YOffset - Joystick_State.lY * .5);
-                    
-                    // Rendering
-                    HDC DeviceContext = GetDC(Window);
-                    RECT ClientRect;
-                    GetClientRect(Window, &ClientRect); //Get RECT of window
-                    int WindowWidth  = ClientRect.right  - ClientRect.left;
-                    int WindowHeight = ClientRect.bottom - ClientRect.top ;
-                    win32_update_Window(DeviceContext, &ClientRect, 0, 0, WindowWidth, WindowHeight);
-                    ReleaseDC(Window, DeviceContext);
-                    
-                    ++YOffset;
-                    ++XOffset;
-                    */
-                }
+#ifdef RENDERER_SOFTWARE
+                // Rendering
+                HDC DeviceContext = GetDC(Window);
+                RECT ClientRect;
+                GetClientRect(Window, &ClientRect); //Get RECT of window
+                int WindowWidth  = ClientRect.right  - ClientRect.left;
+                int WindowHeight = ClientRect.bottom - ClientRect.top ;
+                win32_update_Window(DeviceContext, &ClientRect, 0, 0, WindowWidth, WindowHeight);
+                ReleaseDC(Window, DeviceContext);
                 
+#endif
                 //~ OPENGL RENDERING
-                
+#ifdef RENDERER_OPENGL
                 glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                 
@@ -294,49 +305,67 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 // SPRITE RENDERER_01
                 
-                mat4 model = GLM_MAT4_ZERO_INIT; // constructor
+                /// MODEL VIEW PROJECTION
+                mat3 ThottleWidgetTransform = GLM_MAT3_IDENTITY_INIT;
                 
                 GL_Call(glUseProgram(sprite_render_info.shader));
                 
                 if(first_render)
                 {
-                    glm_translate_make(translation, (vec3){200.0f, 200.0f, 0.0f});
-                    glm_scale_make    (scale      , (vec3){200.0f, 200.0f, 1.0f});
-                    glm_rotate_make   (rotation   , glm_rad(10.0f) ,(vec3){0.0f, 1.0f, 0.0f});
+                    glm_translate2d_make(translation, (vec3){0.0f, 0.0f, 0.0f});
+                    glm_scale2d_make    (scale      , (vec3){0.5f, 0.5f, 1.0f});
+                    glm_rotate2d_make   (rotation   , glm_rad(00.0f));
                     
-                    Helpers_Display_Matrix4(translation, "Translate Matrix");
-                    Helpers_Display_Matrix4(scale      , "Scale Matrix"    );
-                    Helpers_Display_Matrix4(rotation   , "Rotate Matrix"   );
+                    Helpers_Display_Matrix3(translation, "Translate Matrix");
+                    Helpers_Display_Matrix3(scale      , "Scale Matrix"    );
+                    Helpers_Display_Matrix3(rotation   , "Rotate Matrix"   );
                     
                     first_render = false;
                 }
                 
                 // SPRITE RENDERER_01
                 
-                glm_mat4_mulN((mat4 *[]){&translation, &scale }, 2, model);
+                vec3 p =
+                {
+                    2.0f *  ((f32)g_Platform.mouse_x / (f32)g_Platform.window_width ) - 1.0f,
+                    2.0f * -((f32)g_Platform.mouse_y / (f32)g_Platform.window_height) + 1.0f
+                };
+                
+                vec2 size = { 100.0f, 100.0f};
+                
+                glm_translate2d(ThottleWidgetTransform, p);
+                glm_scale2d(ThottleWidgetTransform, (vec2){size[0] / (f32)g_Platform.window_width, size[1] / (f32)g_Platform.window_height});
+                
+                /*
+                                glm_mat3_mul((vec3 *)&ThottleWidgetMVP, (vec3 *)&translation, (vec3 *)ThottleWidgetMVP);
+                                glm_mat3_mul((vec3 *)&ThottleWidgetMVP, (vec3 *)&scale, (vec3 *)ThottleWidgetMVP);
+                                glm_mat3_mul((vec3 *)&ThottleWidgetMVP, (vec3 *)&rotation, (vec3 *)ThottleWidgetMVP);
+                                */
                 
                 //glm_mat4_print(model, stdout);
-                u32 size_x = 1000;
-                u32 size_y = 1000;
-                printf("%f\n", platform->throttle);
-                GL_Call(glUniform1f(sprite_render_info.uniform_throttle, platform->throttle));
-                GL_Call(glUniform2ui(throttle_size, size_x, size_y));
+                vec2 ThrottleWidgetSize = { 1000, 1000 };
+                
+                printf("%f\n", g_Platform.throttle);
+                GL_Call(glUniform1f(sprite_render_info.uniform_throttle, g_Platform.throttle));
+                GL_Call(glUniform2fv(ThrottleSizeUniform, 1, ThrottleWidgetSize));
+                GL_Call(glUniformMatrix3fv(ThrottleTransformUniform, 1, 0, (f32 *)ThottleWidgetTransform));
                 
                 // Enables the alpha channel
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                 
                 //glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-                
                 GL_Call(glBindVertexArray(sprite_render_info.vertex_attributes_id));
                 GL_Call(glDrawArrays(GL_TRIANGLES, 0, 6));
                 GL_Call(glBindVertexArray(0));
                 
-                
                 SwapBuffers(gl_device_context);
+#endif
+#ifdef RENDERER_D3D11
+                // TODO(MIGUEL): add d3d11 implementation
+#endif
                 
                 //~ TIMESTAMP
-                
                 QueryPerformanceCounter(&end_frame_time_data);
                 
                 // NOTE(MIGUEL): Wait any time, if neccssary
@@ -390,14 +419,14 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
         {
             RECT ClientRect;
             GetClientRect(Window, &ClientRect); //Get RECT of window excludes borders
-            global_platform.window_width  = ClientRect.right  - ClientRect.left;
-            global_platform.window_height = ClientRect.bottom - ClientRect.top ;
+            g_Platform.window_width  = ClientRect.right  - ClientRect.left;
+            g_Platform.window_height = ClientRect.bottom - ClientRect.top ;
             //win32_resize_DIB_Section(Width, Height);
         }
         break;
         case WM_CLOSE:
         {
-            global_platform.quit = true;
+            g_Platform.quit = true;
         }
         break;
         case WM_ACTIVATEAPP:
@@ -407,7 +436,7 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
         break;
         case WM_DESTROY:
         {
-            global_platform.quit = true;
+            g_Platform.quit = true;
         }
         break;
         case WM_PAINT:
@@ -437,7 +466,7 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
             { 
                 key_index = KEY_a + (key_code - 'A');
             }
-            global_platform.key_down[key_index] = key_down;
+            g_Platform.key_down[key_index] = key_down;
         }
         break;
         // TODO(MIGUEL): Add code for WM_KEYUP
@@ -451,15 +480,15 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
             { 
                 key_index = KEY_a + (key_code - 'A');
             }
-            global_platform.key_down[key_index] = key_down;
+            g_Platform.key_down[key_index] = key_down;
         }
         case WM_MOUSEMOVE:
         {
-            //global_platform.mouse_x_direction = global_platform.mouse_x < (l_param & 0x0000FFFF)? (u32)(1): (u32)(-1);
-            global_platform.mouse_x = (l_param & 0x0000FFFF);
+            //g_Platform.mouse_x_direction = g_Platform.mouse_x < (l_param & 0x0000FFFF)? (u32)(1): (u32)(-1);
+            g_Platform.mouse_x = (l_param & 0x0000FFFF);
             
-            //global_platform.mouse_y_direction = global_platform.mouse_y < (l_param & 0xFFFF0000 >> 16)? (u32)(-1): (u32)(1);
-            global_platform.mouse_y = ((l_param & 0xFFFF0000) >> 16);
+            //g_Platform.mouse_y_direction = g_Platform.mouse_y < (l_param & 0xFFFF0000 >> 16)? (u32)(-1): (u32)(1);
+            g_Platform.mouse_y = ((l_param & 0xFFFF0000) >> 16);
             
         }
         break;
@@ -477,24 +506,24 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
 
 internal void 
 win32_resize_DIB_Section(int Width, int Height) {
-    if(BitmapMemory)
+    if(g_BitmapMemory)
     {
-        VirtualFree(BitmapMemory, 0, MEM_RELEASE);
+        VirtualFree(g_BitmapMemory, 0, MEM_RELEASE);
     }
     
-    BitmapWidth  = Width;
-    BitmapHeight = Height;
+    g_BitmapWidth  = Width;
+    g_BitmapHeight = Height;
     
-    BitmapInfo.bmiHeader.biSize        = sizeof(BitmapInfo.bmiHeader);
-    BitmapInfo.bmiHeader.biWidth       = BitmapWidth;
-    BitmapInfo.bmiHeader.biHeight      = -BitmapHeight;
-    BitmapInfo.bmiHeader.biPlanes      = 1;
-    BitmapInfo.bmiHeader.biBitCount    = 32;
-    BitmapInfo.bmiHeader.biCompression = BI_RGB;
+    g_BitmapInfo.bmiHeader.biSize        = sizeof(g_BitmapInfo.bmiHeader);
+    g_BitmapInfo.bmiHeader.biWidth       = g_BitmapWidth;
+    g_BitmapInfo.bmiHeader.biHeight      = -g_BitmapHeight;
+    g_BitmapInfo.bmiHeader.biPlanes      = 1;
+    g_BitmapInfo.bmiHeader.biBitCount    = 32;
+    g_BitmapInfo.bmiHeader.biCompression = BI_RGB;
     
     
-    int BitmapMemorySize = (Width * Height)*BytesPerPixel;
-    BitmapMemory = VirtualAlloc(0, BitmapMemorySize, MEM_COMMIT,PAGE_READWRITE);
+    int g_BitmapMemorySize = (Width * Height)*g_BytesPerPixel;
+    g_BitmapMemory = VirtualAlloc(0, g_BitmapMemorySize, MEM_COMMIT,PAGE_READWRITE);
     
     return;
 }
@@ -506,10 +535,10 @@ win32_update_Window(HDC DeviceContext, RECT *ClientRect, int X, int Y, int Width
     int WindowWidth  = ClientRect->right  - ClientRect->left;
     int WindowHeight = ClientRect->bottom - ClientRect->top ;
     StretchDIBits(DeviceContext,
-                  0, 0, BitmapWidth, BitmapHeight,
+                  0, 0, g_BitmapWidth, g_BitmapHeight,
                   0, 0, WindowWidth, WindowHeight,
-                  BitmapMemory                   ,
-                  &BitmapInfo                    ,
+                  g_BitmapMemory                   ,
+                  &g_BitmapInfo                    ,
                   DIB_RGB_COLORS, SRCCOPY);
     return;
 }

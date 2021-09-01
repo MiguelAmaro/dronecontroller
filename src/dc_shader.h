@@ -36,6 +36,7 @@ Shader_create_program(readonly u8* vertexShaderSource, readonly u8* fragmentShad
     {
         glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
         printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED | %s \r\n", infoLog);
+        while(1);
     }
     
     
@@ -54,6 +55,7 @@ Shader_create_program(readonly u8* vertexShaderSource, readonly u8* fragmentShad
     {
         glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
         printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED | %s \r\n", infoLog);
+        while(1);
     }
     
     //printf("FFFFFFFUUUUUUUUUUUCCKKKKKKKKKKKKKKKKKKK!!!!!");

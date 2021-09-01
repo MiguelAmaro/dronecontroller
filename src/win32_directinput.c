@@ -30,7 +30,7 @@ global b32                  g_is_connected_flightstick;
 
 
 
-HRESULT       win32_DirectInput_device_poll              (LPDIRECTINPUTDEVICE8 device, Platform *platform);
+HRESULT       win32_DirectInput_device_poll              (LPDIRECTINPUTDEVICE8 device, platform *Platform);
 
 b32           win32_DirectInput_device_init              (LPDIRECTINPUTDEVICE8 device, DIDEVCAPS capabilities, HWND window);
 b32           win32_DirectInput_direct_input_log_error   (HRESULT result, const char* expectation);
@@ -148,7 +148,7 @@ b32 win32_DirectInput_device_init( LPDIRECTINPUTDEVICE8 device, DIDEVCAPS capabi
     return 1;
 }
 
-HRESULT win32_DirectInput_flightstick_poll(LPDIRECTINPUTDEVICE8 device, Platform *platform)
+HRESULT win32_DirectInput_flightstick_poll(LPDIRECTINPUTDEVICE8 device, platform *Platform)
 {
     HRESULT result;
     DIJOYSTATE2 joystick_state;
@@ -185,14 +185,14 @@ HRESULT win32_DirectInput_flightstick_poll(LPDIRECTINPUTDEVICE8 device, Platform
         return result; // The device should have been acquired during the Poll()
     }
     
-    platform->stick_x = joystick_state.lX;
-    platform->stick_y = joystick_state.lY;
+    Platform->stick_x = joystick_state.lX;
+    Platform->stick_y = joystick_state.lY;
     
     return S_OK;
 }
 
 
-HRESULT win32_DirectInput_throttle_poll(LPDIRECTINPUTDEVICE8 device, Platform *platform)
+HRESULT win32_DirectInput_throttle_poll(LPDIRECTINPUTDEVICE8 device, platform *Platform)
 {
     HRESULT result;
     DIJOYSTATE2 joystick_state;
@@ -228,7 +228,7 @@ HRESULT win32_DirectInput_throttle_poll(LPDIRECTINPUTDEVICE8 device, Platform *p
         return result; // The device should have been acquired during the Poll()
     }
     
-    platform->throttle = (1.0f - (f32)joystick_state.lZ / (f32)65535.0f);
+    Platform->throttle = (1.0f - (f32)joystick_state.lZ / (f32)65535.0f);
     
     return S_OK;
 }

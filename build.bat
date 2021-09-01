@@ -4,12 +4,15 @@ if not exist build mkdir build
 
 rem ====================    PROJECT/FILES      ====================
 set PROJECT_NAME=dc
-set SOURCES= ..\src\win32_%PROJECT_NAME%.c ..\src\%PROJECT_NAME%_opengl.c ..\lib\glad\src\glad.c
+set SOURCES=^
+F:\Dev\DroneController\src\win32_%PROJECT_NAME%.c ^
+F:\Dev\DroneController\src\%PROJECT_NAME%_opengl.c ^
+F:\Dev\DroneController\lib\glad\src\glad.c
 
 rem ====================    COMPILER(MSVC)     ====================
 set MSVC_WARNINGS= -wd4700
 
-set MSVC_FLAGS= %MSVC_WARNINGS% -nologo -Zi
+set MSVC_FLAGS= %MSVC_WARNINGS% -nologo -Zi -DRENDERER_OPENGL
 
 set MSVC_SEARCH_DIRS= ^
 -I ..\lib\ ^
