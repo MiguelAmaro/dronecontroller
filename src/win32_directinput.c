@@ -148,7 +148,7 @@ b32 win32_DirectInput_device_init( LPDIRECTINPUTDEVICE8 device, DIDEVCAPS capabi
     return 1;
 }
 
-HRESULT win32_DirectInput_flightstick_poll(LPDIRECTINPUTDEVICE8 device, platform *Platform)
+HRESULT win32_DirectInputProcessFlightStickInput(LPDIRECTINPUTDEVICE8 device, platform *Platform)
 {
     HRESULT result;
     DIJOYSTATE2 joystick_state;
@@ -192,7 +192,7 @@ HRESULT win32_DirectInput_flightstick_poll(LPDIRECTINPUTDEVICE8 device, platform
 }
 
 
-HRESULT win32_DirectInput_throttle_poll(LPDIRECTINPUTDEVICE8 device, platform *Platform)
+HRESULT win32_DirectInputProcessThrottleInput(LPDIRECTINPUTDEVICE8 device, platform *Platform)
 {
     HRESULT result;
     DIJOYSTATE2 joystick_state;

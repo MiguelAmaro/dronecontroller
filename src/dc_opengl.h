@@ -11,7 +11,7 @@
 #include <cglm/vec3.h>
 #include <cglm/mat4.h>
 #include <cglm/affine.h>
-#include "LAL.h"
+#include "dc_platform.h"
 #include <stdbool.h>
 #include <WGL/wglext.h>
 
@@ -46,5 +46,29 @@ HGLRC win32_Init_OpenGL(HDC real_dc);
 b32 GL_Log(readonly u8 *file, readonly u32 line, readonly u8 *function);
 void GL_ClearError(void);
 
+typedef struct opengl_renderer opengl_renderer;
+struct opengl_renderer
+{
+    HDC   DeviceContext;
+    HGLRC RealContext;
+    u32   CurrentWidth;
+    u32   CurrentHeight;
+};
+
+typedef struct opengl_render_info opengl_render_info;
+struct opengl_render_info
+{
+    u32 vertex_buffer_id;
+    u32 vertex_attributes_id;
+    u32 index_buffer_id;
+    u32  shader;
+    u32  texture;
+    f32 *matrix_model;
+    u32  uniform_model;
+    u32  uniform_throttle;
+    u32  uniform_projection;
+    u32  uniform_color;
+    u32  uniform_input;
+};
 
 #endif //FLIGHTCONTROL_OPENGL_H

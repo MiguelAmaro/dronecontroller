@@ -2,17 +2,23 @@
 
 #ifndef FLIGHTCONTROL_ENTITY_H
 #define FLIGHTCONTROL_ENTITY_H
-// NOTE(MIGUEL): Renderer is a cricular include (included in entity)
-//#include "FlightControl_Renderer.h"
 
-typedef struct 
+#include "dc.h"
+
+typedef enum entity_type entity_type;
+enum entity_type
 {
-    f32 *vertices;
-    u32 *indices;
-    //u32  vertex_Buffer;
-    //u32  element_Buffer;
-    //u32  vertex_Attributes;
-} Entity;
+    Entity_guage,
+};
+
+typedef struct entity entity;
+struct entity
+{
+    entity_type Type;
+    
+    vec2 Dim;
+    vec2 Pos;
+};
 
 
 #endif //FLIGHTCONTROL_ENTITY_H

@@ -20,6 +20,7 @@ void main()
 out vec4 FragColor;
 uniform float ThrottleValue;
 uniform vec2 UISize;
+uniform vec2 UIPos;
 uniform vec2 WindowSize;
 
 
@@ -32,7 +33,7 @@ float plot(vec2 st, float pct)
 
 void main()
 {
-    vec2 st = gl_FragCoord.xy / UISize;
+    vec2 st = (gl_FragCoord.xy / UISize) + UIPos;
     
     float y = ThrottleValue;
     

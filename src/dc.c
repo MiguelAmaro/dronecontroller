@@ -1,9 +1,11 @@
-#include "dc_platform.h"
+#include "dc.h"
+
 #include "dc_openGL.h"
 #include "dc_shader.h"
 #include "dc_helpers.h"
 #include "dc_entity.h"
-#include "dc_renderer.h"
+#include "dc_math.h"
+//#include "dc_renderer.h"
 #include <stdio.h>
 #include <math.h>
 #include "LAL.h"
@@ -17,31 +19,17 @@
 // TODO(MIGUEL): Integrate Opencv once app has access to camera feed
 
 
-typedef struct app_state app_state;
-struct app_state
-{
-    u8 throttle_value;
-    f32 delta_time;
-};
+global entity g_Sprite    = {0};
 
-typedef struct app_backbuffer app_backbuffer;
-struct app_backbuffer
+internal void RenderWeirdGradient(app_backbuffer *Buffer, int offset_x, int offset_y)
 {
-    void *data           ;
-    s32   width          ;
-    s32   height         ;
-    s32   bytes_per_pixel;
-};
-
-internal void RenderWeirdGradient(app_backbuffer *buffer, int offset_x, int offset_y)
-{
-    int width  = buffer->width ;
-    int height = buffer->height;
+    int width  = Buffer->Width ;
+    int Height = Buffer->Height;
     
-    int pitch = width * buffer->bytes_per_pixel;
-    u8 *row   = (u8*)buffer->data;
+    int Pitch = width * Buffer->BytesPerPixel;
+    u8 *row   = (u8*)Buffer->Data;
     
-    for(int y = 0; y < height; y++)
+    for(int y = 0; y < Height; y++)
     {
         u8 *pixel = (u8 *)row;
         
@@ -63,12 +51,28 @@ internal void RenderWeirdGradient(app_backbuffer *buffer, int offset_x, int offs
             * pixel = 0;
             ++pixel;
         }
-        row += pitch;
+        row += Pitch;
     }
     
     return;
 }
 
+
+void Entity_Create(app_state *AppState, v2 Pos ,entity_type Type)
+{
+    ASSERT(AppState->EntityCount < ENTITY_MAX_COUNT);
+    
+    entity *Entity = AppState->Entities + AppState->EntityCount++;
+    
+    Entity->Type = Type;
+    Entity->Dim[0] = 200.0f;
+    Entity->Dim[1] = 200.0f;
+    
+    Entity->Pos[0]  = Pos.X;
+    Entity->Pos[1]  = Pos.Y;
+    
+    return;
+}
 
 
 void
@@ -83,29 +87,49 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
     
     app_state *AppState = (app_state *)Platform->permanent_storage;
     {
-        f32 MoveSpeed  = -200.0f *  AppState->delta_time;
-        AppState->delta_time = Platform->current_time - Platform->last_time;
+        f32 MoveSpeed  = -200.0f *  AppState->DeltaTime;
+        AppState->DeltaTime = Platform->current_time - Platform->last_time;
         
+        v2 MousePos = { Platform->mouse_x, Platform->mouse_y };
         // ************************************************
         // INPUT RESPONSE
         //*************************************************
-        if(Platform->key_down[KEY_q])
+        if(Platform->AppInput->KeyDown[KEY_q])
         {
             app_should_quit = 1;
         }
-        if(Platform->key_down[KEY_c])
+        if(Platform->AppInput[0].KeyDown[KEY_c])
         {
             // TODO(MIGUEL): Should connect to a board
         }
         // NOTE(MIGUEL): Input only for SRITE AKE GEO(player)
-        if(Platform->key_down[KEY_w])
+        if(Platform->AppInput[0].KeyDown[KEY_w])
         {
             //glm_translate(translation, (vec3){0.0f, move_speed , 0.0f} );
             //printf("w\n");
+            Entity_Create(AppState, MousePos, Entity_guage);
+            
         }
         {
-            AppState->throttle_value = 255.0f * (Platform->throttle);
-            printf("%d\n", AppState->throttle_value);
+            AppState->ThrottleValue = 255.0f * (Platform->throttle);
+            printf("%d\n", AppState->ThrottleValue);
+        }
+        
+        
+        entity *Entity = AppState->Entities;
+        for(u32 EntityIndex = 0; EntityIndex < AppState->EntityCount; EntityIndex++, Entity++)
+        {
+            rect_v2 EntityBounds = { 0 };
+            
+            v2 EntityPos = (v2){Entity->Pos[0], Entity->Pos[1]};
+            v2 EntityDim = (v2){Entity->Dim[0], Entity->Dim[1]};
+            
+            rect_v2_Init(&EntityBounds, &EntityDim, &EntityPos);
+            
+            if(rect_v2_IsInRect(&EntityBounds, &MousePos))
+            {
+                
+            }
         }
         
         // NOTE(MIGUEL): this will get clear if when reloading function dynmical from dll
@@ -113,7 +137,7 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
         local_persist YOffset = 0;
         
         RenderWeirdGradient(Backbuffer, XOffset,
-                            YOffset * AppState->throttle_value);
+                            YOffset * AppState->ThrottleValue);
         
         
         ++YOffset;
