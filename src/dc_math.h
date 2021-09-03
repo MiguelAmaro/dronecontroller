@@ -12,7 +12,34 @@ union v2
         f32 X;
         f32 Y;
     };
-    f32 V[2];
+    f32 E[2];
+};
+
+typedef union v4 v4;
+union v4
+{
+    struct
+    {
+        f32 X;
+        f32 Y;
+        f32 Z;
+        f32 W;
+    };
+    f32 E[4];
+};
+
+typedef union m4 m4;
+union m4
+{
+    struct
+    {
+        v4 Col1;
+        v4 Col2;
+        v4 Col3;
+        v4 Col4;
+    };
+    v4  V[4];
+    f32 E[4];
 };
 
 typedef union rect_v2 rect_v2;
@@ -43,5 +70,7 @@ b32 rect_v2_IsInRect(rect_v2 *Bounds, v2 *Point)
             (Point->X >  Bounds->Min.X) &&
             (Point->Y >  Bounds->Min.Y));
 }
+
+
 
 #endif //DRONECONTROLLER_MATH_H
