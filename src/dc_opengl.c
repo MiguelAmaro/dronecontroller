@@ -273,13 +273,14 @@ win32_Init_OpenGL(HDC real_dc)
 #define FRAGSEC ("//~FRAG SHADER")
 
 
-u32 
-OpenGL_CreateShaderProgram(readonly u8* vertexShaderSource, readonly u8* fragmentShaderSource)
+b32 
+OpenGL_CreateShaderProgram(readonly u8* vertexShaderSource, readonly u8* fragmentShaderSource, u32 *shaderProgram)
 {
     
     u32 vertexShader   = glCreateShader(GL_VERTEX_SHADER);
     u32 fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     
+    b32 Result = 1;
     s32 success;
     u8 infoLog[512];
     
@@ -293,7 +294,8 @@ OpenGL_CreateShaderProgram(readonly u8* vertexShaderSource, readonly u8* fragmen
     {
         glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
         printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED | %s \r\n", infoLog);
-        while(1);
+        //while(1);
+        Result = 0;
     }
     
     
@@ -312,53 +314,59 @@ OpenGL_CreateShaderProgram(readonly u8* vertexShaderSource, readonly u8* fragmen
     {
         glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
         printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED | %s \r\n", infoLog);
-        while(1);
+        //while(1);
+        Result = 0;
     }
     
     //printf("FFFFFFFUUUUUUUUUUUCCKKKKKKKKKKKKKKKKKKK!!!!!");
     // CREATING A SHADER PROGRAM
     // AND LINKING SHADERS TO IT
-    u32 shaderProgram;
-    shaderProgram = glCreateProgram();
     
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
+    *shaderProgram = glCreateProgram();
     
-    glLinkProgram(shaderProgram);
+    glAttachShader(*shaderProgram, vertexShader);
+    glAttachShader(*shaderProgram, fragmentShader);
+    
+    glLinkProgram(*shaderProgram);
     
     //  Set Debug log Buffer to Zero
     for(u32 byte = 0; byte < 512; ++byte){
         infoLog[byte] = 0;
     }
     
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    glGetProgramiv(*shaderProgram, GL_LINK_STATUS, &success);
     
     if(!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        glGetProgramInfoLog(*shaderProgram, 512, NULL, infoLog);
         printf("ERROR::SHADER_PROGRAM::LINKING_FAILED | %s \r\n", infoLog);
+        Result = 0;
     }
     
     
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader); 
     
-    return shaderProgram;
+    return Result;
 }
 
 
-void 
-OpenGL_GetShaderSource(u32 *ShaderProgram, readonly u8 *path)
+b32
+OpenGL_LoadShaderFromSource(u32 *ShaderProgram, readonly u8 *path, HANDLE File, size_t FileSize)
 {
     //printf("\n\n************************\n  %s  \n ******************** \n", path);
     // TODO(MIGUEL): get rid of all this c std library bullshit
+    b32 Result = 0;
+    
+#if 0
     FILE *File = (void *)0x00;
     File = fopen(path, "r");
+#endif
     ASSERT(File);
     
     //u32 j = 0;
     //u32 i = 1;
     
-    u32 BytesToRead = FileIO_GetFileSize(path);
+    u32 BytesToRead = FileSize;//FileIO_GetFileSize(path);
     u8 *Shader = calloc( ( BytesToRead + 10 ),  sizeof(u8));
     
     ASSERT(Shader);
@@ -369,10 +377,17 @@ OpenGL_GetShaderSource(u32 *ShaderProgram, readonly u8 *path)
         *(Shader + i) = 0x00;
     }
     
+    u32 BytesRead;
+    
     // WRITE FILE INTO BUFFER
-    for(u32 i = 0; i < BytesToRead || *(Shader + i) == EOF; i++)
+    for(u32 i = 0; i < BytesToRead; i++)
     {
-        *(Shader + i) = fgetc(File);
+        //*(Shader + i) = fgetc(File);
+        ReadFile(File,
+                 (Shader + i),
+                 1,
+                 &BytesRead,
+                 0);
     }
     
     //printf("\n\n************************\n  %s \nsize: %d \n ******************** \n", path, BytesToRead);
@@ -384,7 +399,7 @@ OpenGL_GetShaderSource(u32 *ShaderProgram, readonly u8 *path)
     *(Shader + FSpos - sizeof(FRAGSEC) - 1) = '\0';
     //*(Shader + BytesToRead) = '\0';
     
-    *ShaderProgram = OpenGL_CreateShaderProgram(Shader + VSpos, Shader + FSpos);
+    Result = OpenGL_CreateShaderProgram(Shader + VSpos, Shader + FSpos, ShaderProgram);
     
     //printf("========== Vertex Shader\n%s \nDONE\n\n", Shader + VSpos);
     //printf("========== Fragment Shader\n%s \nDONE\n\n", Shader + FSpos);
@@ -393,10 +408,10 @@ OpenGL_GetShaderSource(u32 *ShaderProgram, readonly u8 *path)
     //printf("String Match: %d \n", VSpos);
     //printf("String Match: %d \n", FSpos);
     
-    fclose(File);
+    //fclose(File);
     free(Shader);
     
-    return;
+    return Result;
 }
 
 

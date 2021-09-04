@@ -446,7 +446,13 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                                                              g_Platform.permanent_storage_size,
                                                              MEM_COMMIT | MEM_RESERVE,
                                                              PAGE_READWRITE);
-            
+            /*
+            g_Platform.permanent_storage_size = TRANSIENT_STORAGE_SIZE;
+            g_Platform.permanent_storage      = VirtualAlloc(0, 
+                                                             g_Platform.permanent_storage_size,
+                                                             MEM_COMMIT | MEM_RESERVE,
+                                                             PAGE_READWRITE);
+            */
             g_Platform.frames_per_second_target = 60.0f;
         }
         
@@ -469,7 +475,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         };
         
         //Sprite.vertices = sprite_vertices;
-        
+#if RENDERER_OPENGL
         opengl_render_info sprite_render_info;
         OpenGL_VertexBuffer_Create(&(sprite_render_info.vertex_buffer_id), sprite_vertices, sizeof(sprite_vertices));
         
@@ -479,18 +485,42 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         GL_Call(glEnableVertexAttribArray(0));
         GL_Call(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(f32), (void *)0x00));
         
-        // THIS SHADER MAyBE FUCKED UP
-        OpenGL_GetShaderSource(&sprite_render_info.shader, "../res/shaders/throttle.glsl");
+        WIN32_FIND_DATAA CurrentShaderFileInfo = {0};
+        
+        FindFirstFileA("../res/shaders/throttle.glsl",
+                       &CurrentShaderFileInfo);
+        
+        CopyFile("../res/shaders/throttle.glsl",
+                 "../res/shaders/throttle_inuse_a.glsl", 0);
+        
+        size_t ShaderFileSize = ((CurrentShaderFileInfo.nFileSizeHigh << 32) |
+                                 (CurrentShaderFileInfo.nFileSizeLow));
+        
+        HANDLE InUseShaderFileA = 0;
+        HANDLE InUseShaderFileB = 0;
+        
+        InUseShaderFileA = CreateFileA("../res/shaders/throttle_inuse_a.glsl",
+                                       GENERIC_READ, 0, 0,
+                                       OPEN_EXISTING,
+                                       FILE_FLAG_DELETE_ON_CLOSE,
+                                       0);
+        ASSERT(InUseShaderFileA);
+        
+        OpenGL_LoadShaderFromSource(&sprite_render_info.shader,
+                                    "../res/shaders/throttle.glsl",
+                                    InUseShaderFileA, ShaderFileSize);
+        
         
         // UNBIND BUFFER
         GL_Call(glBindBuffer(GL_ARRAY_BUFFER, 0)); 
         GL_Call(glBindVertexArray(0));
         
         sprite_render_info.uniform_throttle = glGetUniformLocation(sprite_render_info.shader, "ThrottleValue"  );
+        u32 WindowSizeUniform        = glGetUniformLocation(sprite_render_info.shader, "WindowSize"  );
         u32 ThrottleSizeUniform      = glGetUniformLocation(sprite_render_info.shader, "UISize"  );
-        u32 ThrottlePosUniform      = glGetUniformLocation(sprite_render_info.shader, "UIPos"  );
+        u32 ThrottlePosUniform       = glGetUniformLocation(sprite_render_info.shader, "UIPos"  );
         u32 ThrottleTransformUniform = glGetUniformLocation(sprite_render_info.shader, "Transform"  );
-        
+#endif
         
         if(Window)
         {
@@ -616,6 +646,79 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 //~ OPENGL RENDERING
 #ifdef RENDERER_OPENGL
                 
+                WIN32_FIND_DATAA UpdatedShaderFileInfo = {0};
+                
+                
+                FindFirstFileA("../res/shaders/throttle.glsl",
+                               &UpdatedShaderFileInfo);
+                
+                
+                if((UpdatedShaderFileInfo.ftLastWriteTime.dwLowDateTime !=
+                    CurrentShaderFileInfo.ftLastWriteTime.dwLowDateTime) ||
+                   (UpdatedShaderFileInfo.ftLastWriteTime.dwHighDateTime !=
+                    CurrentShaderFileInfo.ftLastWriteTime.dwHighDateTime)) 
+                {
+                    u32 NewShader = 0;
+                    
+                    if(InUseShaderFileA)
+                    {
+                        
+                        CopyFile("../res/shaders/throttle.glsl",
+                                 "../res/shaders/throttle_inuse_b.glsl", 0);
+                        
+                        
+                        size_t ShaderFileSize = ((UpdatedShaderFileInfo.nFileSizeHigh << 32) |
+                                                 (UpdatedShaderFileInfo.nFileSizeLow));
+                        
+                        InUseShaderFileB = CreateFileA("../res/shaders/throttle_inuse_b.glsl",
+                                                       GENERIC_READ, 0, 0,
+                                                       OPEN_EXISTING,
+                                                       FILE_FLAG_DELETE_ON_CLOSE,
+                                                       0);
+                        
+                        if(OpenGL_LoadShaderFromSource(&NewShader, "../res/shaders/throttle_inuse_b.glsl",
+                                                       InUseShaderFileB, ShaderFileSize))
+                        {
+                            glDeleteShader(sprite_render_info.shader);
+                            sprite_render_info.shader = NewShader;
+                        }
+                        
+                        CloseHandle(InUseShaderFileA);
+                        InUseShaderFileA = 0;
+                        
+                        CurrentShaderFileInfo.ftLastWriteTime =
+                            UpdatedShaderFileInfo.ftLastWriteTime;
+                    }
+                    else if(InUseShaderFileB)
+                    {
+                        
+                        CopyFile("../res/shaders/throttle.glsl",
+                                 "../res/shaders/throttle_inuse_a.glsl", 0);
+                        
+                        
+                        size_t ShaderFileSize = ((UpdatedShaderFileInfo.nFileSizeHigh << 32) |
+                                                 (UpdatedShaderFileInfo.nFileSizeLow));
+                        
+                        InUseShaderFileA = CreateFileA("../res/shaders/throttle_inuse_a.glsl",
+                                                       GENERIC_READ, 0, 0,
+                                                       OPEN_EXISTING,
+                                                       FILE_FLAG_DELETE_ON_CLOSE,
+                                                       0);
+                        
+                        if(OpenGL_LoadShaderFromSource(&NewShader, "../res/shaders/throttle_inuse_a.glsl",
+                                                       InUseShaderFileA, ShaderFileSize))
+                        {
+                            glDeleteShader(sprite_render_info.shader);
+                            sprite_render_info.shader = NewShader;
+                        }
+                        
+                        CloseHandle(InUseShaderFileB);
+                        InUseShaderFileB = 0;
+                        
+                        CurrentShaderFileInfo.ftLastWriteTime = UpdatedShaderFileInfo.ftLastWriteTime;
+                    }
+                }
+                
                 if(g_Platform.window_width  != OpenGLRenderer.CurrentWidth || g_Platform.window_height != OpenGLRenderer.CurrentHeight)
                 {
                     OpenGLRenderer.CurrentWidth  = g_Platform.window_width;
@@ -654,15 +757,21 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                                     Entity->Dim[1] / (f32)g_Platform.window_height
                                 });
                     
-                    
+                    local_persist f32 theta = 0.0;
+                    //glm_rotate2d(ThottleWidgetTransform, glm_rad(theta));
+                    theta += 0.1f;
                     /// LOCAL SPACE
                     GL_Call(glUniformMatrix3fv(ThrottleTransformUniform, 1, 0, (f32 *)ThottleWidgetTransform));
-                    
                     /// SCREEN SPACE
+                    GL_Call(glUniform2fv(WindowSizeUniform , 1, (vec2)
+                                         {
+                                             g_Platform.window_width,
+                                             g_Platform.window_height
+                                         }));
                     GL_Call(glUniform2fv(ThrottlePosUniform , 1, (vec2)
                                          {
-                                             (Entity->Pos[0] / (f32)g_Platform.window_width ) ,
-                                             (Entity->Pos[1] / (f32)g_Platform.window_height)
+                                             Entity->Pos[0],//(Entity->Pos[0] / (f32)g_Platform.window_width ) ,
+                                             Entity->Pos[0]//-(Entity->Pos[1] / (f32)g_Platform.window_height)
                                          }));
                     GL_Call(glUniform2fv(ThrottleSizeUniform, 1, Entity->Dim));
                     

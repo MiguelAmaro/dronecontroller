@@ -58,15 +58,15 @@ internal void RenderWeirdGradient(app_backbuffer *Buffer, int offset_x, int offs
 }
 
 
-void Entity_Create(app_state *AppState, v2 Pos ,entity_type Type)
+void Entity_Create(app_state *AppState, v2 Pos , v2 Dim, entity_type Type)
 {
     ASSERT(AppState->EntityCount < ENTITY_MAX_COUNT);
     
     entity *Entity = AppState->Entities + AppState->EntityCount++;
     
     Entity->Type = Type;
-    Entity->Dim[0] = 200.0f;
-    Entity->Dim[1] = 200.0f;
+    Entity->Dim[0] = Dim.X;
+    Entity->Dim[1] = Dim.Y;
     
     Entity->Pos[0]  = Pos.X;
     Entity->Pos[1]  = Pos.Y;
@@ -86,6 +86,18 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
     b32 app_should_quit = 0;
     
     app_state *AppState = (app_state *)Platform->permanent_storage;
+    
+    local_persist IsInitialized = 0;
+    if(!IsInitialized)
+    {
+        Entity_Create(AppState,
+                      (v2){Platform->window_width / 2.0f, Platform->window_height / 2.0f},
+                      (v2){Platform->window_width, Platform->window_height},
+                      Entity_guage);
+        
+        IsInitialized = 1;
+    }
+    
     {
         f32 MoveSpeed  = -200.0f *  AppState->DeltaTime;
         AppState->DeltaTime = Platform->current_time - Platform->last_time;
@@ -107,7 +119,7 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
         {
             //glm_translate(translation, (vec3){0.0f, move_speed , 0.0f} );
             //printf("w\n");
-            Entity_Create(AppState, MousePos, Entity_guage);
+            Entity_Create(AppState, MousePos, (v2){200.0f, 200.0f}, Entity_guage);
             
         }
         {
