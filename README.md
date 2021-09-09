@@ -6,6 +6,8 @@ it's flight controller.
 ### Linear Algebra
 * Books
     *   The fundamentals of Computer Graphics
+    *   [The Book of Shaders](https://thebookofshaders.com/)
+    *   [Learn OpenGl](https://learnopengl.com/)
 * Basis and Coordinate Systems
     0. pg. 109 - 115
     1. [[Khan Academy] Liniar Combinations & Span](https://youtu.be/Qm_OS-8COwU)
