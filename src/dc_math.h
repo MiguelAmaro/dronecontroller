@@ -53,7 +53,7 @@ union rect_v2
     v2 V[2];
 };
 
-void rect_v2_Init(rect_v2 *Rect, v2 *Dim, v2 *Pos)
+internal void rect_v2_Init(rect_v2 *Rect, v2 *Dim, v2 *Pos)
 {
     Rect->Min.X = Pos->X - (Dim->X / 2);
     Rect->Min.Y = Pos->Y - (Dim->Y / 2);
@@ -63,7 +63,7 @@ void rect_v2_Init(rect_v2 *Rect, v2 *Dim, v2 *Pos)
     return;
 }
 
-b32 rect_v2_IsInRect(rect_v2 *Bounds, v2 *Point)
+internal b32 rect_v2_IsInRect(rect_v2 *Bounds, v2 *Point)
 {
     return ((Point->X <= Bounds->Max.X) &&
             (Point->Y <= Bounds->Max.Y) &&

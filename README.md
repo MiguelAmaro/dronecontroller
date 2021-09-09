@@ -15,3 +15,5 @@ it's flight controller.
     5. [[3Blue1Brown] Linear Combinations, Span, Basis](https://www.youtube.com/watch?v=k7RM-ot2NWY&list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab&index=2)
     6. 5.1 Determinants: pg.89 - 91
     7. [[3Blue1Brown] Linear Transformations and Matrices](https://www.youtube.com/watch?v=kYB8IZa5AuE&list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab&index=3)
+    8. [[HandmadeHero] Vertex and Fagment Shaders](https://www.youtube.com/watch?v=GtNvxxl3AK4)
+    9. [[Khan Academy] Linear Algebra Course](https://www.khanacademy.org/math/linear-algebra)

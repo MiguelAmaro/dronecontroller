@@ -4,6 +4,7 @@
 #define FLIGHTCONTROL_ENTITY_H
 
 #include "dc.h"
+#include "dc_math.h"
 
 typedef enum entity_type entity_type;
 enum entity_type
@@ -16,8 +17,8 @@ struct entity
 {
     entity_type Type;
     
-    vec2 Dim;
-    vec2 Pos;
+    v2 Dim;
+    v2 Pos;
 };
 
 

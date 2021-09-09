@@ -35,6 +35,8 @@ typedef  int64_t b64;
 typedef float f32;
 typedef float f64;
 
+#include "dc_math.h"
+
 // NOTE(MIGUEL): This is an Xmacro. Do some research on this
 enum {
 #define key(name, str) KEY_##name,
@@ -51,56 +53,64 @@ struct app_button_state
     b32 EndedDown;
 };
 
+typedef struct drone_controller_input drone_controller_input;
+struct drone_controller_input
+{
+    v2 StickPos;
+    
+    f32 NormalizedThrottle;
+};
+
+typedef struct ui_controller_input ui_controller_input;
+struct ui_controller_input
+{
+    v2 MousePos;
+    
+    b32 MouseLeftButtonDown;
+    b32 MouseLeftButtonPressed;
+    b32 MouseRightButtonDown;
+    b32 MouseRightButtonPressed;
+    
+    // NOTE(MIGUEL): maybe some of the keys map to something that can control the drone
+    b32 KeyDown[KEY_MAX];
+};
+
 
 typedef struct app_input app_input;
 struct app_input
 {
-    /// Drone control input
-    f32 MovementX;
-    f32 MovementY;
-    
-    /// UI control input
-    b32 KeyDown[KEY_MAX];
-    
+    ui_controller_input    UIControls;
+    drone_controller_input DroneControls;
 };
+
 
 typedef struct platform platform;
 struct platform
 {
-    b32 quit;
-    u32 window_height;
-    u32 window_width;
+    b32 QuitApp;
+    u32 WindowHeight;
+    u32 WindowWidth;
     
     // STORAGE
-    void *permanent_storage;
-    u32   permanent_storage_size;
+    void *PermanentStorage;
+    u32   PermanentStorageSize;
+    // STORAGE
+    void *TransientStorage;
+    u32   TransientStorageSize;
     
     /// INPUT
-    app_input AppInput[2]; // Allowable controllers xbox360, trustermaster, keyboard
+    app_input AppInput[1]; // Allowable controllers xbox360, trustermaster, keyboard
     
-    //b32 key_down[KEY_MAX];
-    f32 frames_per_second_target;
-    
-    f32 mouse_x; // NOTE(MIGUEL): app_input deprecated soon!
-    f32 mouse_y;
-    b32 mouse_leftb_down;
-    b32 mouse_leftb_pressed;
-    b32 mouse_rightb_down;
-    b32 mouse_rightb_pressed;
+    f32 TargetSecondsPerFrame;
     
     // TODO(MIGUEL): normalize the axis inputs
     // NOTE(MIGUEL): initializatin is ASSERT guarded
-    b32 stick_is_initialized;
-    f32 stick_x; // NOTE(MIGUEL): this will be stored in app_input
-    f32 stick_y;
-    
-    f32 throttle;
-    
-    b32 serialport_is_initialized;
+    b32 StickIsInitialized; 
+    b32 SerialportDeviceConnected;
     
     // TIME
-    f32 current_time;
-    f32 last_time;
+    f32 CurrentTime;
+    f32 LastTime;
 };
 
 

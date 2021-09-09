@@ -5,13 +5,14 @@
 #include <windows.h>
 #include <GLAD/glad.h>
 #include "win32_dc.h"
-#include "dc_Program_Options.h"
+#include "dc_program_options.h"
+#include "dc_platform.h"
+#include "dc_math.h"
 #include "win32_directinput.c"
 #include "dc_serialport.h"
-#include "dc_platform.h"
-#include "dc_renderer.h" // TODO(MIGUEL): get rid of this file
-#include "dc_opengl.h"
 #include "dc.h"
+#include "dc_opengl.h"
+#include "dc_renderer.h" // TODO(MIGUEL): get rid of this file
 #include <stdio.h>
 #include <string.h>
 #include <GL/gl.h>
@@ -88,14 +89,14 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
         {
             RECT ClientRect;
             GetClientRect(Window, &ClientRect); //Get RECT of window excludes borders
-            g_Platform.window_width  = ClientRect.right  - ClientRect.left;
-            g_Platform.window_height = ClientRect.bottom - ClientRect.top ;
+            g_Platform.WindowWidth  = ClientRect.right  - ClientRect.left;
+            g_Platform.WindowHeight = ClientRect.bottom - ClientRect.top ;
             //win32_resize_DIB_Section(Width, Height);
         }
         break;
         case WM_CLOSE:
         {
-            g_Platform.quit = true;
+            g_Platform.QuitApp = true;
         }
         break;
         case WM_ACTIVATEAPP:
@@ -105,7 +106,7 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
         break;
         case WM_DESTROY:
         {
-            g_Platform.quit = true;
+            g_Platform.QuitApp = true;
         }
         break;
         case WM_PAINT:
@@ -181,7 +182,7 @@ win32_ProcessPendingMessages(win32_State *State, app_input *Keyboard)
         {
             case WM_QUIT:
             {
-                g_Platform.quit = true;
+                g_Platform.QuitApp = true;
             }  break;
             
             case WM_SYSKEYUP:
@@ -191,12 +192,29 @@ win32_ProcessPendingMessages(win32_State *State, app_input *Keyboard)
             case WM_MOUSEMOVE:
             {
                 //g_Platform.mouse_x_direction = g_Platform.mouse_x < (l_param & 0x0000FFFF)? (u32)(1): (u32)(-1);
-                g_Platform.mouse_x = (message.lParam & 0x0000FFFF);
+                g_Platform.AppInput[0].UIControls.MousePos.X = (message.lParam & 0x0000FFFF);
                 
                 //g_Platform.mouse_y_direction = g_Platform.mouse_y < (l_param & 0xFFFF0000 >> 16)? (u32)(-1): (u32)(1);
-                g_Platform.mouse_y = ((message.lParam & 0xFFFF0000) >> 16);
+                g_Platform.AppInput[0].UIControls.MousePos.Y = ((message.lParam & 0xFFFF0000) >> 16);
+                printf("mouse y: %f \n", g_Platform.AppInput[0].UIControls.MousePos.Y);
                 
             } break;
+            
+            case WM_LBUTTONDOWN:
+            {
+                g_Platform.AppInput[0].UIControls.MouseLeftButtonDown = 1;
+            } break;
+            
+            case WM_LBUTTONUP:
+            {
+                g_Platform.AppInput[0].UIControls.MouseLeftButtonDown = 0;
+            } break;
+            
+            case WM_RBUTTONDOWN:
+            
+            case WM_RBUTTONUP:
+            
+            case WM_MOUSEHWHEEL:
             
             case WM_KEYDOWN:
             
@@ -210,7 +228,7 @@ win32_ProcessPendingMessages(win32_State *State, app_input *Keyboard)
                 { 
                     key_index = KEY_a + (key_code - 'A');
                 }
-                Keyboard->KeyDown[key_index] = key_down;
+                Keyboard->UIControls.KeyDown[key_index] = key_down;
             } break;
 #if 0
             {
@@ -405,14 +423,14 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         // CREATE THE WINDOW AND DISPLAY IT
         //**************************************
         
-        g_Platform.window_width  = INITIAL_WINDOW_WIDTH;
-        g_Platform.window_height = INITIAL_WINDOW_HEIGHT;
+        g_Platform.WindowWidth  = INITIAL_WINDOW_WIDTH;
+        g_Platform.WindowHeight = INITIAL_WINDOW_HEIGHT;
         
         HWND Window = CreateWindowEx(0, WindowClass.lpszClassName,
                                      "Drone Controller",
                                      WS_OVERLAPPEDWINDOW | WS_VISIBLE,
                                      INITIAL_WINDOW_COORD_X, INITIAL_WINDOW_COORD_Y,
-                                     g_Platform.window_width, g_Platform.window_height,
+                                     g_Platform.WindowWidth, g_Platform.WindowHeight,
                                      0, 0, Instance, 0);
         
         
@@ -424,8 +442,8 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         {
             .DeviceContext = gl_device_context,
             .RealContext   = gl_real_context,
-            .CurrentWidth  = g_Platform.window_width,
-            .CurrentHeight = g_Platform.window_height,
+            .CurrentWidth  = g_Platform.WindowWidth,
+            .CurrentHeight = g_Platform.WindowHeight,
         };
         
         
@@ -441,19 +459,19 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         
         // PLATFORM INITIALIZATION
         {
-            g_Platform.permanent_storage_size = PERMANENT_STORAGE_SIZE;
-            g_Platform.permanent_storage      = VirtualAlloc(0, 
-                                                             g_Platform.permanent_storage_size,
-                                                             MEM_COMMIT | MEM_RESERVE,
-                                                             PAGE_READWRITE);
-            /*
-            g_Platform.permanent_storage_size = TRANSIENT_STORAGE_SIZE;
-            g_Platform.permanent_storage      = VirtualAlloc(0, 
-                                                             g_Platform.permanent_storage_size,
-                                                             MEM_COMMIT | MEM_RESERVE,
-                                                             PAGE_READWRITE);
-            */
-            g_Platform.frames_per_second_target = 60.0f;
+            g_Platform.PermanentStorageSize = PERMANENT_STORAGE_SIZE;
+            g_Platform.PermanentStorage     = VirtualAlloc(0, 
+                                                           g_Platform.PermanentStorageSize,
+                                                           MEM_COMMIT | MEM_RESERVE,
+                                                           PAGE_READWRITE);
+            
+            g_Platform.TransientStorageSize = TRANSIENT_STORAGE_SIZE;
+            g_Platform.TransientStorage     = VirtualAlloc(0, 
+                                                           g_Platform.TransientStorageSize,
+                                                           MEM_COMMIT | MEM_RESERVE,
+                                                           PAGE_READWRITE);
+            
+            g_Platform.TargetSecondsPerFrame = 60.0f;
         }
         
         App_Init(&g_Platform);
@@ -517,6 +535,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         
         sprite_render_info.uniform_throttle = glGetUniformLocation(sprite_render_info.shader, "ThrottleValue"  );
         u32 WindowSizeUniform        = glGetUniformLocation(sprite_render_info.shader, "WindowSize"  );
+        u32 DeltaTimeUniform         = glGetUniformLocation(sprite_render_info.shader, "DeltaTime"  );
         u32 ThrottleSizeUniform      = glGetUniformLocation(sprite_render_info.shader, "UISize"  );
         u32 ThrottlePosUniform       = glGetUniformLocation(sprite_render_info.shader, "UIPos"  );
         u32 ThrottleTransformUniform = glGetUniformLocation(sprite_render_info.shader, "Transform"  );
@@ -527,8 +546,8 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
             MSG Message;
             
             
-            g_Platform.serialport_is_initialized = win32_SerialPort_device_init ();
-            g_Platform.     stick_is_initialized = win32_DirectInput_init(Window, Instance);
+            g_Platform.SerialportDeviceConnected = win32_SerialPort_device_init ();
+            g_Platform.StickIsInitialized        = win32_DirectInput_init(Window, Instance);
             
             
             s64 performance_counter_frequency   = 1;
@@ -548,12 +567,12 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
             //
             // MESSAGE PROCESSING AND RENDERING
             //**************************************
-            while(!g_Platform.quit)
+            while(!g_Platform.QuitApp)
             {
                 
-                g_Platform.last_time     = g_Platform.current_time;
-                g_Platform.current_time += 1 / g_Platform.frames_per_second_target;
-                s64 desired_frame_time_counts = performance_counter_frequency / g_Platform.frames_per_second_target;
+                g_Platform.LastTime     = g_Platform.CurrentTime;
+                g_Platform.CurrentTime += 1 / g_Platform.TargetSecondsPerFrame;
+                s64 desired_frame_time_counts = performance_counter_frequency / g_Platform.TargetSecondsPerFrame;
                 
                 QueryPerformanceCounter(&begin_frame_time_data);
                 
@@ -587,7 +606,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 //~ FLIGHTSTICK
                 
                 // NOTE(MIGUEL): rename stick_is_inithalized
-                if(g_Platform.stick_is_initialized)
+                if(g_Platform.StickIsInitialized)
                 {
                     win32_DirectInputProcessThrottleInput(g_throttle   , &g_Platform);
                     win32_DirectInputProcessFlightStickInput(g_flightstick, &g_Platform);
@@ -595,7 +614,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 //~ SERIALPORT 
                 
-                if(g_Platform.serialport_is_initialized)
+                if(g_Platform.SerialportDeviceConnected)
                 {
                     win32_SerialPort_recieve_data();
                 }
@@ -610,7 +629,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 AppRenderBuffer.Height = g_BitmapHeight;
                 AppRenderBuffer.BytesPerPixel = g_BytesPerPixel;
                 
-                g_Platform.quit |= App_Update(&AppRenderBuffer, &g_Platform);
+                g_Platform.QuitApp |= App_Update(&AppRenderBuffer, &g_Platform);
                 
                 
                 // ************************************************
@@ -624,9 +643,9 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 //~ SERIALPORT
                 
-                if(g_Platform.serialport_is_initialized)
+                if(g_Platform.SerialportDeviceConnected)
                 {
-                    u8 ThrottleValue = 255.0f * (g_Platform.throttle);
+                    u8 ThrottleValue = 255.0f * (g_Platform.AppInput[0].DroneControls.NormalizedThrottle);
                     win32_SerialPort_send_data( &ThrottleValue, sizeof(u8));
                 }
                 printf("%s \n\r", g_SerialPort_buffer);
@@ -651,7 +670,6 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 FindFirstFileA("../res/shaders/throttle.glsl",
                                &UpdatedShaderFileInfo);
-                
                 
                 if((UpdatedShaderFileInfo.ftLastWriteTime.dwLowDateTime !=
                     CurrentShaderFileInfo.ftLastWriteTime.dwLowDateTime) ||
@@ -719,10 +737,10 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                     }
                 }
                 
-                if(g_Platform.window_width  != OpenGLRenderer.CurrentWidth || g_Platform.window_height != OpenGLRenderer.CurrentHeight)
+                if(g_Platform.WindowWidth  != OpenGLRenderer.CurrentWidth || g_Platform.WindowHeight != OpenGLRenderer.CurrentHeight)
                 {
-                    OpenGLRenderer.CurrentWidth  = g_Platform.window_width;
-                    OpenGLRenderer.CurrentHeight = g_Platform.window_height;
+                    OpenGLRenderer.CurrentWidth  = g_Platform.WindowWidth;
+                    OpenGLRenderer.CurrentHeight = g_Platform.WindowHeight;
                     
                     glViewport(0, 0, OpenGLRenderer.CurrentWidth, OpenGLRenderer.CurrentHeight);
                 }
@@ -734,8 +752,8 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 // SPRITE RENDERER_01
                 
-                printf("%f\n", g_Platform.throttle);
-                app_state *AppState = (app_state *)g_Platform.permanent_storage;
+                printf("%f\n", g_Platform.AppInput[0].DroneControls.NormalizedThrottle);
+                app_state *AppState = (app_state *)g_Platform.PermanentStorage;
                 
                 entity *Entity = AppState->Entities;
                 for(u32 EntityIndex = 0; EntityIndex < AppState->EntityCount; EntityIndex++, Entity++)
@@ -747,14 +765,14 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                     glm_translate2d(ThottleWidgetTransform, 
                                     (vec2)
                                     {
-                                        2.0f *  (Entity->Pos[0] / (f32)g_Platform.window_width ) - 1.0f,
-                                        2.0f * -(Entity->Pos[1] / (f32)g_Platform.window_height) + 1.0f
+                                        2.0f *  (Entity->Pos.X / (f32)g_Platform.WindowWidth ) - 1.0f,
+                                        2.0f * -(Entity->Pos.Y / (f32)g_Platform.WindowHeight) + 1.0f
                                     });
                     glm_scale2d(ThottleWidgetTransform, 
                                 (vec2)
                                 {
-                                    Entity->Dim[0] / (f32)g_Platform.window_width,
-                                    Entity->Dim[1] / (f32)g_Platform.window_height
+                                    Entity->Dim.X / (f32)g_Platform.WindowWidth,
+                                    Entity->Dim.Y / (f32)g_Platform.WindowHeight
                                 });
                     
                     local_persist f32 theta = 0.0;
@@ -765,18 +783,19 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                     /// SCREEN SPACE
                     GL_Call(glUniform2fv(WindowSizeUniform , 1, (vec2)
                                          {
-                                             g_Platform.window_width,
-                                             g_Platform.window_height
+                                             g_Platform.WindowWidth,
+                                             g_Platform.WindowHeight
                                          }));
                     GL_Call(glUniform2fv(ThrottlePosUniform , 1, (vec2)
                                          {
-                                             Entity->Pos[0],//(Entity->Pos[0] / (f32)g_Platform.window_width ) ,
-                                             Entity->Pos[0]//-(Entity->Pos[1] / (f32)g_Platform.window_height)
+                                             Entity->Pos.X,//(Entity->Pos[0] / (f32)g_Platform.window_width ) ,
+                                             Entity->Pos.Y//-(Entity->Pos[1] / (f32)g_Platform.window_height)
                                          }));
-                    GL_Call(glUniform2fv(ThrottleSizeUniform, 1, Entity->Dim));
+                    GL_Call(glUniform2fv(ThrottleSizeUniform, 1, Entity->Dim.E));
                     
                     /// EXTRA SHIT
-                    GL_Call(glUniform1f(sprite_render_info.uniform_throttle, g_Platform.throttle));
+                    GL_Call(glUniform1f(sprite_render_info.uniform_throttle, g_Platform.AppInput[0].DroneControls.NormalizedThrottle));
+                    GL_Call(glUniform1f(DeltaTimeUniform, AppState->DeltaTime));
                     
                     // Enables the alpha channel
                     glEnable(GL_BLEND);

@@ -185,8 +185,8 @@ HRESULT win32_DirectInputProcessFlightStickInput(LPDIRECTINPUTDEVICE8 device, pl
         return result; // The device should have been acquired during the Poll()
     }
     
-    Platform->stick_x = joystick_state.lX;
-    Platform->stick_y = joystick_state.lY;
+    Platform->AppInput->DroneControls.StickPos.X = joystick_state.lX;
+    Platform->AppInput->DroneControls.StickPos.Y = joystick_state.lY;
     
     return S_OK;
 }
@@ -228,7 +228,7 @@ HRESULT win32_DirectInputProcessThrottleInput(LPDIRECTINPUTDEVICE8 device, platf
         return result; // The device should have been acquired during the Poll()
     }
     
-    Platform->throttle = (1.0f - (f32)joystick_state.lZ / (f32)65535.0f);
+    Platform->AppInput->DroneControls.NormalizedThrottle = (1.0f - (f32)joystick_state.lZ / (f32)65535.0f);
     
     return S_OK;
 }

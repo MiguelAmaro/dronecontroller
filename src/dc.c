@@ -1,10 +1,10 @@
 #include "dc.h"
 
-#include "dc_openGL.h"
+#include "dc_math.h"
+#include "dc_opengl.h"
 #include "dc_shader.h"
 #include "dc_helpers.h"
 #include "dc_entity.h"
-#include "dc_math.h"
 //#include "dc_renderer.h"
 #include <stdio.h>
 #include <math.h>
@@ -65,11 +65,8 @@ void Entity_Create(app_state *AppState, v2 Pos , v2 Dim, entity_type Type)
     entity *Entity = AppState->Entities + AppState->EntityCount++;
     
     Entity->Type = Type;
-    Entity->Dim[0] = Dim.X;
-    Entity->Dim[1] = Dim.Y;
-    
-    Entity->Pos[0]  = Pos.X;
-    Entity->Pos[1]  = Pos.Y;
+    Entity->Dim = Dim;
+    Entity->Pos = Pos;
     
     return;
 }
@@ -85,62 +82,63 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
 {
     b32 app_should_quit = 0;
     
-    app_state *AppState = (app_state *)Platform->permanent_storage;
+    app_state *AppState = (app_state *)Platform->PermanentStorage;
     
     local_persist IsInitialized = 0;
     if(!IsInitialized)
     {
         Entity_Create(AppState,
-                      (v2){Platform->window_width / 2.0f, Platform->window_height / 2.0f},
-                      (v2){Platform->window_width, Platform->window_height},
+                      (v2){Platform->WindowWidth / 2.0f, Platform->WindowHeight / 2.0f},
+                      (v2){Platform->WindowWidth, Platform->WindowHeight},
                       Entity_guage);
         
         IsInitialized = 1;
     }
     
     {
+        AppState->DeltaTime += Platform->CurrentTime - Platform->LastTime;
         f32 MoveSpeed  = -200.0f *  AppState->DeltaTime;
-        AppState->DeltaTime = Platform->current_time - Platform->last_time;
         
-        v2 MousePos = { Platform->mouse_x, Platform->mouse_y };
+        v2 MousePos = { Platform->AppInput->UIControls.MousePos.X , Platform->AppInput->UIControls.MousePos.Y };
         // ************************************************
         // INPUT RESPONSE
         //*************************************************
-        if(Platform->AppInput->KeyDown[KEY_q])
+        if(Platform->AppInput[0].UIControls.KeyDown[KEY_q])
         {
             app_should_quit = 1;
         }
-        if(Platform->AppInput[0].KeyDown[KEY_c])
+        if(Platform->AppInput[0].UIControls.KeyDown[KEY_c])
         {
             // TODO(MIGUEL): Should connect to a board
         }
         // NOTE(MIGUEL): Input only for SRITE AKE GEO(player)
-        if(Platform->AppInput[0].KeyDown[KEY_w])
+        if(Platform->AppInput[0].UIControls.KeyDown[KEY_w])
         {
-            //glm_translate(translation, (vec3){0.0f, move_speed , 0.0f} );
-            //printf("w\n");
             Entity_Create(AppState, MousePos, (v2){200.0f, 200.0f}, Entity_guage);
+        }
+        if(Platform->AppInput[0].UIControls.KeyDown[KEY_s])
+        {
+            entity *Entity = AppState->Entities;
             
+            Entity->Pos.X  = Platform->WindowWidth  / 2.0f;
+            Entity->Pos.Y  = Platform->WindowHeight / 2.0f;
         }
         {
-            AppState->ThrottleValue = 255.0f * (Platform->throttle);
-            printf("%d\n", AppState->ThrottleValue);
+            AppState->Throttle = 255.0f * (Platform->AppInput[0].DroneControls.NormalizedThrottle);
+            printf("%d\n", AppState->Throttle);
         }
-        
         
         entity *Entity = AppState->Entities;
         for(u32 EntityIndex = 0; EntityIndex < AppState->EntityCount; EntityIndex++, Entity++)
         {
             rect_v2 EntityBounds = { 0 };
             
-            v2 EntityPos = (v2){Entity->Pos[0], Entity->Pos[1]};
-            v2 EntityDim = (v2){Entity->Dim[0], Entity->Dim[1]};
+            rect_v2_Init(&EntityBounds, &Entity->Dim, &Entity->Pos);
             
-            rect_v2_Init(&EntityBounds, &EntityDim, &EntityPos);
-            
-            if(rect_v2_IsInRect(&EntityBounds, &MousePos))
+            if(rect_v2_IsInRect(&EntityBounds, &MousePos) && Platform->AppInput[0].UIControls.MouseLeftButtonDown)
             {
-                
+                Entity->Pos.X = MousePos.X;
+                Entity->Pos.Y = MousePos.Y;
             }
         }
         
@@ -149,7 +147,7 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
         local_persist YOffset = 0;
         
         RenderWeirdGradient(Backbuffer, XOffset,
-                            YOffset * AppState->ThrottleValue);
+                            YOffset * AppState->Throttle);
         
         
         ++YOffset;

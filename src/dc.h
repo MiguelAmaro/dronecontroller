@@ -11,7 +11,7 @@
 typedef struct app_state app_state;
 struct app_state
 {
-    u8 ThrottleValue;
+    u8  Throttle;
     f32 DeltaTime;
     
     entity Entities[ENTITY_MAX_COUNT];
