@@ -17,64 +17,74 @@ typedef enum
     throttle = 0xb687044f
 } controller_id;
 
-global LPDIRECTINPUT8       g_DirectInput_interface   ;
+// TODO(MIGUEL): Change existing implementation to use this structure
+typedef struct controller controller;
+struct controller
+{
+    LPDIRECTINPUTDEVICE8 Interface;
+    DIDEVCAPS            Capabilities;
+    b32                  Connected;
+    controller_id        ID;
+};
 
-global LPDIRECTINPUTDEVICE8 g_throttle             ;
-global DIDEVCAPS            g_throttle_capabilities;
-global b32                  g_is_connected_throttle;
+global controller g_Throttle;
+global controller g_Flightstick;
+
+global LPDIRECTINPUT8       g_DirectInputInterface;
+
+//global LPDIRECTINPUTDEVICE8 g_throttle             ;
+//global DIDEVCAPS            g_throttle_capabilities;
+//global b32                  g_is_connected_throttle;
 
 
-global LPDIRECTINPUTDEVICE8 g_flightstick             ;
-global DIDEVCAPS            g_flightstick_capabilities;
-global b32                  g_is_connected_flightstick;
+//global LPDIRECTINPUTDEVICE8 g_flightstick             ;
+//global DIDEVCAPS            g_flightstick_capabilities;
+//global b32                  g_is_connected_flightstick;
 
 
 
-HRESULT       win32_DirectInput_device_poll              (LPDIRECTINPUTDEVICE8 device, platform *Platform);
+HRESULT       win32_DirectInput_device_poll(LPDIRECTINPUTDEVICE8 device, platform *Platform);
 
-b32           win32_DirectInput_device_init              (LPDIRECTINPUTDEVICE8 device, DIDEVCAPS capabilities, HWND window);
-b32           win32_DirectInput_direct_input_log_error   (HRESULT result, const char* expectation);
-BOOL CALLBACK win32_DirectInput_direct_input_enum_devices(LPCDIDEVICEINSTANCE device, LPVOID prevInstance);
+b32           win32_InitController         (controller *Controller, controller_id id, HWND window);
+b32           win32_DirectInputLogError    (HRESULT result, const char* expectation);
+BOOL CALLBACK win32_DirectInputEnumDevices (LPCDIDEVICEINSTANCE device, LPVOID prevInstance);
 
 internal b32 win32_DirectInput_init(HWND window, HINSTANCE instance)
 {
     //******************************
     // CREATING A DEVICE INTERFACE
     //******************************
-    HRESULT result;
+    HRESULT Result;
     
-    result = DirectInput8Create(instance,
+    Result = DirectInput8Create(instance,
                                 DIRECTINPUT_VERSION,
                                 &IID_IDirectInput8,
-                                (VOID**)&g_DirectInput_interface,
+                                (VOID**)&g_DirectInputInterface,
                                 NULL);
     
     
-    ASSERT(win32_DirectInput_direct_input_log_error(result, "Create Device Interface"));
+    ASSERT(win32_DirectInputLogError(Result, "Create Device Interface"));
     
     
     //**************************************
     // QUERYING DEVICES ON SYSTEM FOR STICK & THROTTLE
     //**************************************
     
-    result = g_DirectInput_interface->lpVtbl->EnumDevices(
-                                                          g_DirectInput_interface,
-                                                          DI8DEVCLASS_GAMECTRL,
-                                                          win32_DirectInput_direct_input_enum_devices,
-                                                          NULL,
-                                                          DIEDFL_ATTACHEDONLY);
+    Result = g_DirectInputInterface->lpVtbl->EnumDevices(g_DirectInputInterface,
+                                                         DI8DEVCLASS_GAMECTRL,
+                                                         win32_DirectInputEnumDevices,
+                                                         NULL,
+                                                         DIEDFL_ATTACHEDONLY);
     
-    ASSERT(win32_DirectInput_direct_input_log_error(result, "Enumerate Devices And Fetch Desired One"));
+    ASSERT(win32_DirectInputLogError(Result, "Enumerate Devices And Fetch Desired One"));
     
-    g_is_connected_flightstick = win32_DirectInput_device_init(g_flightstick,
-                                                               g_flightstick_capabilities, window);
-    g_is_connected_throttle    = win32_DirectInput_device_init(g_throttle   ,
-                                                               g_throttle_capabilities, window);
+    win32_InitController(&g_Flightstick, stick,    window);
+    win32_InitController(&g_Throttle   , throttle, window);
     return 1;
 }
 
 // NOTE(MIGUEL): should be in the main win32 file
-void win32_print_last_sys_error(void)
+void win32_PrintLastSystemError(void)
 {
     LPTSTR error_msg;
     u32 error_code    = GetLastError();
@@ -95,18 +105,24 @@ void win32_print_last_sys_error(void)
 }
 
 
-b32 win32_DirectInput_device_init( LPDIRECTINPUTDEVICE8 device, DIDEVCAPS capabilities,HWND window)
+b32 win32_InitController(controller *Controller, controller_id ID, HWND window)
 {
-    HRESULT result;
+    HRESULT Result;
+    
+    LPDIRECTINPUTDEVICE8      Device       = Controller->Interface;
+    IDirectInputDevice8AVtbl *DeviceVTable = Device->lpVtbl;
+    
+    
+    Controller->ID = ID;
     
     //**************************************
     // TELL THE OS HOW TO FORMAT DEVICES INPUT DATA
     //**************************************
     
-    result = device->lpVtbl->SetDataFormat(device,
-                                           &c_dfDIJoystick2);
+    Result = DeviceVTable->SetDataFormat(Device,
+                                         &c_dfDIJoystick2);
     
-    if(!win32_DirectInput_direct_input_log_error(result, "Set Device Data Format"))
+    if(!win32_DirectInputLogError(Result, "Set Device Data Format"))
     { return 0; }
     
     
@@ -114,11 +130,11 @@ b32 win32_DirectInput_device_init( LPDIRECTINPUTDEVICE8 device, DIDEVCAPS capabi
     // INPUT DEVICE SETUP
     //**************************************
     
-    result = device->lpVtbl->SetCooperativeLevel(device,
-                                                 window,
-                                                 DISCL_EXCLUSIVE | DISCL_FOREGROUND);
+    Result = DeviceVTable->SetCooperativeLevel(Device,
+                                               window,
+                                               DISCL_EXCLUSIVE | DISCL_FOREGROUND);
     
-    if(!win32_DirectInput_direct_input_log_error(result, "Set Device Cooperative Levels"))
+    if(!win32_DirectInputLogError(Result, "Set Device Cooperative Levels"))
     { return 0; }
     
     
@@ -127,12 +143,12 @@ b32 win32_DirectInput_device_init( LPDIRECTINPUTDEVICE8 device, DIDEVCAPS capabi
     //**************************************
     
     // Try to print capabilities later
-    capabilities.dwSize = sizeof(DIDEVCAPS);
+    Controller->Capabilities.dwSize = sizeof(DIDEVCAPS);
     
-    result = device->lpVtbl->GetCapabilities(device,
-                                             &capabilities);
+    Result = DeviceVTable->GetCapabilities(Device,
+                                           &Controller->Capabilities);
     
-    if(!win32_DirectInput_direct_input_log_error(result, "Get Device Capabilities"))
+    if(!win32_DirectInputLogError(Result, "Get Device Capabilities"))
     { return 0; }
     
     
@@ -148,54 +164,57 @@ b32 win32_DirectInput_device_init( LPDIRECTINPUTDEVICE8 device, DIDEVCAPS capabi
     return 1;
 }
 
-HRESULT win32_DirectInputProcessFlightStickInput(LPDIRECTINPUTDEVICE8 device, platform *Platform)
+HRESULT win32_DirectInputProcessFlightStickInput(controller *Controller, platform *Platform)
 {
-    HRESULT result;
-    DIJOYSTATE2 joystick_state;
+    HRESULT Result;
+    DIJOYSTATE2 JoystickState;
     
-    if(device == NULL)
+    LPDIRECTINPUTDEVICE8 Device = Controller->Interface;
+    
+    if(Device == NULL)
     {
         return S_OK;
     }
     
-    result = device->lpVtbl->Poll(device);
+    Result = Device->lpVtbl->Poll(Device);
     
-    if(FAILED(result))
+    if(FAILED(Result))
     {
-        result = device->lpVtbl->Acquire(device);
+        Result = Device->lpVtbl->Acquire(Device);
         
-        while (result == DIERR_INPUTLOST) 
+        while (Result == DIERR_INPUTLOST) 
         {
-            result = device->lpVtbl->Acquire(device);
+            Result = Device->lpVtbl->Acquire(Device);
         }
         
         
-        if ((result == DIERR_INVALIDPARAM) || (result == DIERR_NOTINITIALIZED)) 
+        if ((Result == DIERR_INVALIDPARAM) || (Result == DIERR_NOTINITIALIZED)) 
         {
             return E_FAIL;
         }
         
-        if (result == DIERR_OTHERAPPHASPRIO) 
+        if (Result == DIERR_OTHERAPPHASPRIO) 
         {
             return S_OK;
         }
     }
-    if (FAILED(result = device->lpVtbl->GetDeviceState(device, sizeof(DIJOYSTATE2), &joystick_state))) 
+    if (FAILED(Result = Device->lpVtbl->GetDeviceState(Device, sizeof(DIJOYSTATE2), &JoystickState))) 
     {
-        return result; // The device should have been acquired during the Poll()
+        return Result; // The Device should have been acquired during the Poll()
     }
     
-    Platform->AppInput->DroneControls.StickPos.X = joystick_state.lX;
-    Platform->AppInput->DroneControls.StickPos.Y = joystick_state.lY;
+    Platform->AppInput->DroneControls.StickPos.X = JoystickState.lX;
+    Platform->AppInput->DroneControls.StickPos.Y = JoystickState.lY;
     
     return S_OK;
 }
 
 
-HRESULT win32_DirectInputProcessThrottleInput(LPDIRECTINPUTDEVICE8 device, platform *Platform)
+HRESULT win32_DirectInputProcessThrottleInput(controller *Controller, platform *Platform)
 {
     HRESULT result;
     DIJOYSTATE2 joystick_state;
+    LPDIRECTINPUTDEVICE8 device = Controller->Interface;
     
     if(device == NULL)
     {
@@ -234,9 +253,9 @@ HRESULT win32_DirectInputProcessThrottleInput(LPDIRECTINPUTDEVICE8 device, platf
 }
 
 
-BOOL CALLBACK win32_DirectInput_direct_input_enum_devices(LPCDIDEVICEINSTANCE device, LPVOID prevInstance)
+BOOL CALLBACK win32_DirectInputEnumDevices(LPCDIDEVICEINSTANCE device, LPVOID prevInstance)
 {
-    HRESULT result;
+    HRESULT Result;
     
     if(device->dwDevType & ~DI8DEVTYPE_FLIGHT)
     {
@@ -245,20 +264,20 @@ BOOL CALLBACK win32_DirectInput_direct_input_enum_devices(LPCDIDEVICEINSTANCE de
         if(device->guidProduct.Data1 == stick)
         {
             
-            result = g_DirectInput_interface->lpVtbl->CreateDevice(g_DirectInput_interface,
-                                                                   &device->guidInstance,
-                                                                   &g_flightstick,
-                                                                   NULL);
+            Result = g_DirectInputInterface->lpVtbl->CreateDevice(g_DirectInputInterface,
+                                                                  &device->guidInstance,
+                                                                  &g_Flightstick.Interface,
+                                                                  NULL);
         }
         if(device->guidProduct.Data1 == throttle)
         {
-            result = g_DirectInput_interface->lpVtbl->CreateDevice(g_DirectInput_interface,
-                                                                   &device->guidInstance,
-                                                                   &g_throttle,
-                                                                   NULL);
+            Result = g_DirectInputInterface->lpVtbl->CreateDevice(g_DirectInputInterface,
+                                                                  &device->guidInstance,
+                                                                  &g_Throttle.Interface,
+                                                                  NULL);
         }
         
-        win32_DirectInput_direct_input_log_error(result, "Create a Device");
+        win32_DirectInputLogError(Result, "Create a Device");
         
         num_flight_devices++;
     }
@@ -271,7 +290,7 @@ BOOL CALLBACK win32_DirectInput_direct_input_enum_devices(LPCDIDEVICEINSTANCE de
     return DIENUM_CONTINUE;
 }
 
-void win32_DirectInput_log_device_info(LPCDIDEVICEINSTANCE device)
+void win32_DirectInputLogDeviceInfo(LPCDIDEVICEINSTANCE device)
 {
     // NOTE(MIGUEL): Use this in the callback for device enumeration function
     u8  device_log[256];
@@ -332,7 +351,7 @@ void win32_DirectInput_log_device_info(LPCDIDEVICEINSTANCE device)
     return;
 }
 
-b32 win32_DirectInput_direct_input_log_error(HRESULT result, const char* expectation)
+b32 win32_DirectInputLogError(HRESULT result, const char* expectation)
 {
     printf("%s - ", expectation);
     switch(result)

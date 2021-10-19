@@ -13,6 +13,7 @@
 #include "dc.h"
 #include "dc_opengl.h"
 #include "dc_renderer.h" // TODO(MIGUEL): get rid of this file
+#include "fast_pipe.h" // TODO(MIGUEL): get rid of this file
 #include <stdio.h>
 #include <string.h>
 #include <GL/gl.h>
@@ -24,6 +25,7 @@
 #include <Ws2tcpip.h>
 #include <strsafe.h>
 #include <conio.h>
+
 // TODO(MIGUEL): get freetype to work
 /*
 #include <ft2build.h>
@@ -383,10 +385,15 @@ win32_resize_DIB_Section(int Width, int Height) {
 int CALLBACK 
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCode) 
 {
+#if 1
     AllocConsole();
     freopen("CONOUT$", "w", stdout);
+#else
+    /// Use Refterm Fast pipe
+    //ASSERT(USE_FAST_PIPE_IF_AVAILABLE());
     
-    HANDLE Debug_console = GetStdHandle(STD_OUTPUT_HANDLE );
+#endif
+    
     //~ FREETYPE SETTUP
 	/*
     s32 error = FT_Init_FreeType(&g_freetype_lib);
@@ -546,7 +553,8 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
             MSG Message;
             
             
-            g_Platform.SerialportDeviceConnected = win32_SerialPort_device_init ();
+            win32_SerialPort_InitDevice(&g_SerialPortDevice);
+            // TODO(MIGUEL): Set initialization to individual controller structures
             g_Platform.StickIsInitialized        = win32_DirectInput_init(Window, Instance);
             
             
@@ -608,25 +616,29 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 // NOTE(MIGUEL): rename stick_is_inithalized
                 if(g_Platform.StickIsInitialized)
                 {
-                    win32_DirectInputProcessThrottleInput(g_throttle   , &g_Platform);
-                    win32_DirectInputProcessFlightStickInput(g_flightstick, &g_Platform);
+                    win32_DirectInputProcessThrottleInput   (&g_Throttle   , &g_Platform);
+                    win32_DirectInputProcessFlightStickInput(&g_Flightstick, &g_Platform);
                 }
                 
                 //~ SERIALPORT 
                 
-                if(g_Platform.SerialportDeviceConnected)
+                if(g_SerialPortDevice.Connected)
                 {
-                    win32_SerialPort_recieve_data();
+                    // TODO(MIGUEL): Find out what is causing the stall.
+                    win32_SerialPort_RecieveData(&g_SerialPortDevice);
                 }
-                
+                else
+                {
+                    win32_SerialPort_InitDevice(&g_SerialPortDevice);
+                }
                 
                 // ************************************************
                 // PROCESSING
                 //*************************************************
                 app_backbuffer AppRenderBuffer = { 0 };
-                AppRenderBuffer.Data = g_BitmapMemory;
-                AppRenderBuffer.Width = g_BitmapWidth;
-                AppRenderBuffer.Height = g_BitmapHeight;
+                AppRenderBuffer.Data          = g_BitmapMemory;
+                AppRenderBuffer.Width         = g_BitmapWidth;
+                AppRenderBuffer.Height        = g_BitmapHeight;
                 AppRenderBuffer.BytesPerPixel = g_BytesPerPixel;
                 
                 g_Platform.QuitApp |= App_Update(&AppRenderBuffer, &g_Platform);
@@ -643,12 +655,16 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 //~ SERIALPORT
                 
-                if(g_Platform.SerialportDeviceConnected)
+                if(g_SerialPortDevice.Connected)
                 {
                     u8 ThrottleValue = 255.0f * (g_Platform.AppInput[0].DroneControls.NormalizedThrottle);
-                    win32_SerialPort_send_data( &ThrottleValue, sizeof(u8));
+                    win32_SerialPort_SendData(&g_SerialPortDevice, &ThrottleValue, sizeof(u8));
                 }
-                printf("%s \n\r", g_SerialPort_buffer);
+                else
+                {
+                    win32_SerialPort_InitDevice(&g_SerialPortDevice);
+                }
+                printf("%s \n\r", g_SerialPortDevice.RecieveQueue);
                 
                 //~ Software RENDERING
 #ifdef RENDERER_SOFTWARE
@@ -837,7 +853,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 }
             }
             
-            win32_SerialPort_close_device();
+            win32_SerialPort_CloseDevice(&g_SerialPortDevice);
             
             FreeConsole();
         }
