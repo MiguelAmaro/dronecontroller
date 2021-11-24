@@ -5,8 +5,16 @@
 
 #include "dc_platform.h"
 
-typedef struct win32_State win32_State;
-struct win32_State
+typedef struct win32_thread_info win32_thread_info;
+struct win32_thread_info
+{
+    u32    LogicalThreadIndex;
+    DWORD  ID;
+    HANDLE Handle;
+};
+
+typedef struct win32_state win32_state;
+struct win32_state
 {
     size_t MainMemoryBlockSize;
     u8     MainMemoryBlock;
@@ -14,6 +22,8 @@ struct win32_State
     // TODO(MIGUEL): implement this
     b32 InputPlayBackIndex;
     b32 InputRecordIndex;
+    
+    win32_thread_info CommThreadInfo;
 };
 
 typedef struct win32_Backbuffer win32_Backbuffer;

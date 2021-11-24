@@ -37,9 +37,12 @@
 //TODO(MIGUEL): Move back to the platform layer
 global BITMAPINFO g_BitmapInfo;
 global void *g_BitmapMemory;
-global int g_BitmapWidth;
-global int g_BitmapHeight;
-global int g_BytesPerPixel = 4;
+global int   g_BitmapWidth;
+global int   g_BitmapHeight;
+global int   g_BytesPerPixel = 4;
+
+global platform    g_Platform   = {0};
+global win32_state g_Win32State = {0};
 
 global vec4 color       = { 1.0f, 1.0f, 1.0f };
 global mat3 translation = GLM_MAT3_ZERO_INIT;
@@ -49,7 +52,6 @@ global vec3 scalefactor = { 100.0f, 100.0f, 0.0f };
 
 // NOTE(MIGUEL): this is controlling the window screen coordinates
 
-global platform g_Platform = {0};
 //
 //internal void 
 //win32_resize_DIB_Section(int Width, int Height);
@@ -244,7 +246,7 @@ void RenderText(Shader &s, std::string text, float x, float y, float scale, glm:
 
 // NOTE(MIGUEL): DEPRECATED - moving to opengl
 internaldef void 
-win32_update_Window(HDC DeviceContext, RECT *ClientRect, int X, int Y, int Width, int Height) {
+win32_UpdateWindow(HDC DeviceContext, RECT *ClientRect, int X, int Y, int Width, int Height) {
     int WindowWidth  = ClientRect->right  - ClientRect->left;
     int WindowHeight = ClientRect->bottom - ClientRect->top ;
     StretchDIBits(DeviceContext,
@@ -303,7 +305,7 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
             RECT ClientRect;
             //GetClientRect(Window, &ClientRect); //Get RECT of window excludes borders
             
-            win32_update_Window(DeviceContext, &ClientRect, X, Y, Width, Height);
+            win32_UpdateWindow(DeviceContext, &ClientRect, X, Y, Width, Height);
             EndPaint(Window, &Paint);
         }
         break;
@@ -349,7 +351,7 @@ win32_ProcessKeyboardMessage(app_button_state *NewState, b32 IsDown)
 }
 
 internaldef void
-win32_ProcessPendingMessages(win32_State *State, app_input *Keyboard)
+win32_ProcessPendingMessages(win32_state *State, app_input *Keyboard)
 {
     MSG message;
     
@@ -372,13 +374,8 @@ win32_ProcessPendingMessages(win32_State *State, app_input *Keyboard)
             
             case WM_MOUSEMOVE:
             {
-                //g_Platform.mouse_x_direction = g_Platform.mouse_x < (l_param & 0x0000FFFF)? (u32)(1): (u32)(-1);
                 g_Platform.AppInput[0].UIControls.MousePos.x = (message.lParam & 0x0000FFFF);
-                
-                //g_Platform.mouse_y_direction = g_Platform.mouse_y < (l_param & 0xFFFF0000 >> 16)? (u32)(-1): (u32)(1);
                 g_Platform.AppInput[0].UIControls.MousePos.y = ((message.lParam & 0xFFFF0000) >> 16);
-                printf("mouse y: %f \n", g_Platform.AppInput[0].UIControls.MousePos.y);
-                
             } break;
             
             case WM_LBUTTONDOWN:
@@ -561,25 +558,6 @@ win32_resize_DIB_Section(int Width, int Height) {
     return;
 }
 
-typedef struct win32_thread_info win32_thread_info;
-struct win32_thread_info
-{
-    u32 LogicalThreadIndex;
-};
-
-DWORD WINAPI
-ThreadProc(LPVOID lpParameter)
-{
-    u8 *StringToPrint = (u8 *)lpParameter;
-    
-    printf("%s", StringToPrint);
-    
-    
-    OutputDebugStringA(StringToPrint);
-    
-    return 0;
-}
-
 int CALLBACK 
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCode) 
 {
@@ -591,36 +569,6 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
     //ASSERT(USE_FAST_PIPE_IF_AVAILABLE());
     
 #endif
-    
-    //~ FREETYPE SETTUP
-    /*
-    s32 error = FT_Init_FreeType(&g_freetype_lib);
-    if(error)
-    {
-        printf("Error initializeing freetype btich\n");
-    }
-    */
-    
-    u8 *Param = "Thread Started !!!\n\r";
-    
-    for(u32 ThreadIndex = 0; ThreadIndex < 15; ThreadIndex++)
-    {
-        win32_thread_info Info = { 0 };
-        
-        Info.LogicalThreadIndex = ThreadIndex;
-        DWORD ThreadID;
-        
-        
-        DWORD ThreadId;
-        
-        HANDLE ThreadHandle = CreateThread(0, 0,
-                                           ThreadProc,
-                                           Param,
-                                           0,
-                                           &ThreadId);
-        
-        CloseHandle(ThreadHandle);
-    }
     
     //**************************************
     // MAIN WINDOW SETUP
@@ -681,7 +629,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         
         glGetIntegerv(GL_MAJOR_VERSION, &gl_major);
         glGetIntegerv(GL_MINOR_VERSION, &gl_minor);
-        printf("OPENGL VERSION: %d.%d \n", gl_major, gl_minor);
+        //OutputDebugStringA("OPENGL VERSION: %d.%d \n", gl_major, gl_minor);
 #endif
         
         // PLATFORM INITIALIZATION
@@ -777,7 +725,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
             GlyphHashTableInit(AppState);
             GlyphHashTableFill(AppState);
             
-            win32_SerialPort_InitDevice(&g_SerialPortDevice);
+            win32_SerialPort_InitDevice(&g_Win32State, &g_SerialPortDevice);
             // TODO(MIGUEL): Set initialization to individual controller structures
             g_Platform.StickIsInitialized        = win32_DirectInput_init(Window, Instance);
             
@@ -853,7 +801,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 }
                 else
                 {
-                    win32_SerialPort_InitDevice(&g_SerialPortDevice);
+                    win32_SerialPort_InitDevice(&g_Win32State, &g_SerialPortDevice);
                 }
                 
                 // ************************************************
@@ -874,8 +822,6 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 //~ FLIGHTSTICK
                 
-                //printf("HOST: Recieving - %s \n", g_SerialPort_buffer);
-                
                 
                 //~ SERIALPORT
                 
@@ -886,20 +832,19 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 }
                 else
                 {
-                    win32_SerialPort_InitDevice(&g_SerialPortDevice);
+                    win32_SerialPort_InitDevice(&g_Win32State, &g_SerialPortDevice);
                 }
                 if(g_SerialPortDevice.Connected)
                 {
                     
-                    printf("%s \n\r", g_SerialPortDevice.RecieveQueue);
+                    //printf("%d \n\r", (u32)g_SerialPortDevice.RecieveQueue);
                 }
                 /*
                 for(string8_printqueue sting8_printqueue length)
                 {
-                    printf();
                 }
-                
                 */
+                
                 //~ Software RENDERING
 #ifdef RENDERER_SOFTWARE
                 // Rendering
@@ -1002,7 +947,6 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 // SPRITE RENDERER_01
                 
-                printf("%f\n", g_Platform.AppInput[0].DroneControls.NormalizedThrottle);
                 app_state *AppState = (app_state *)g_Platform.PermanentStorage;
                 
                 entity *Entity = AppState->Entities;
@@ -1075,7 +1019,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 }
             }
             
-            win32_SerialPort_CloseDevice(&g_SerialPortDevice);
+            win32_SerialPort_CloseDevice(&g_SerialPortDevice, &g_Win32State);
             
             FreeConsole();
         }

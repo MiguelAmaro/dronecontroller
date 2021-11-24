@@ -126,7 +126,6 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
         }
         {
             AppState->Throttle = 255.0f * (Platform->AppInput[0].DroneControls.NormalizedThrottle);
-            printf("%d\n", AppState->Throttle);
         }
         
         entity *Entity = AppState->Entities;

@@ -40,6 +40,8 @@ pushd build
 
 set path=%path%;F:\Dev\DroneControl\build
 
+taskkill /f /im win32_dc.exe
+
 rem ====================     WINDOWS          ====================
 call cl %MSVC_FLAGS% %MSVC_SEARCH_DIRS% %SOURCES% /link %MSVC_LIBS% 
 
