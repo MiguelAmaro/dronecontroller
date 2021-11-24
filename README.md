@@ -11,7 +11,7 @@ it's flight controller.
 
 * Basis and Coordinate Systems
 0. pg. 109 - 115
-1. [Khan Academy Liniar Combinations & Span]
+[Khan Academy Liniar Combinations & Span]
 (
  http://youtu.be/Qm_OS-8COwU
  )
