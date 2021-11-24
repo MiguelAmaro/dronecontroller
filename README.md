@@ -2,7 +2,6 @@
 A windows application used to control and display debug info of a drone and
 it's flight controller.
 
-## Graphics Resources
 ### Linear Algebra
 * Books
 *   The fundamentals of Computer Graphics
@@ -21,8 +20,9 @@ it's flight controller.
 7.   [[3Blue1Brown] Linear Transformations and Matrices](https://www.youtube.com/watch?v=kYB8IZa5AuE&list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab&index=3)
 8.   [[HandmadeHero] Vertex and Fagment Shaders](https://www.youtube.com/watch?v=GtNvxxl3AK4)
 9.   [[Khan Academy] Linear Algebra Course](https://www.khanacademy.org/math/linear-algebra)                                                                       
-                                                                                                                     http://www.songho.ca/opengl/gl_transform.html http://davidlively.com/programming/graphics/opengl-matrices/row-major-vs-column-major/   
+
+### Graphics Resources                                                                                                                   http://www.songho.ca/opengl/gl_transform.html http://davidlively.com/programming/graphics/opengl-matrices/row-major-vs-column-major/   
 http://www.songho.ca/opengl/gl_matrix.html                                                                                                 
 
 
-System Communication Resources                                                                                                             https://docs.microsoft.com/en-us/windows/win32/devio/monitoring-communications-events                                                                                                                                                                                                         
+### System Communication Resources                                                                                                         *    https://docs.microsoft.com/en-us/windows/win32/devio/monitoring-communications-events                                                                                                                                                                                                         
