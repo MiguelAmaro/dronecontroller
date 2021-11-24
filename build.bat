@@ -38,7 +38,7 @@ rem **********              START BUILD               **********
 rem ************************************************************
 pushd build
 
-set path=%path%;F:\Dev\FlightControl\build
+set path=%path%;F:\Dev\DroneControl\build
 
 rem ====================     WINDOWS          ====================
 call cl %MSVC_FLAGS% %MSVC_SEARCH_DIRS% %SOURCES% /link %MSVC_LIBS% 

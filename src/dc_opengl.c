@@ -134,7 +134,7 @@ typedef BOOL WINAPI wglChoosePixelFormatARB_type(HDC hdc, const int *piAttribILi
                                                  const FLOAT *pfAttribFList, UINT nMaxFormats, int *piFormats, UINT *nNumFormats);
 wglChoosePixelFormatARB_type *wglChoosePixelFormatARB;
 
-internal void
+internaldef void
 win32_Init_OpenGL_Extensions(void)
 {
     WNDCLASS dummy_window_class = {
@@ -366,7 +366,7 @@ OpenGL_LoadShaderFromSource(u32 *ShaderProgram, readonly u8 *path, HANDLE File, 
     //u32 j = 0;
     //u32 i = 1;
     
-    u32 BytesToRead = FileSize;//FileIO_GetFileSize(path);
+    u32 BytesToRead = FileSize;
     u8 *Shader = calloc( ( BytesToRead + 10 ),  sizeof(u8));
     
     ASSERT(Shader);

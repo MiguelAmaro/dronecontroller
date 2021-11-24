@@ -21,7 +21,7 @@
 
 global entity g_Sprite    = {0};
 
-internal void RenderWeirdGradient(app_backbuffer *Buffer, int offset_x, int offset_y)
+internaldef void RenderWeirdGradient(app_backbuffer *Buffer, int offset_x, int offset_y)
 {
     int width  = Buffer->Width ;
     int Height = Buffer->Height;
@@ -58,7 +58,7 @@ internal void RenderWeirdGradient(app_backbuffer *Buffer, int offset_x, int offs
 }
 
 
-void Entity_Create(app_state *AppState, v2 Pos , v2 Dim, entity_type Type)
+void Entity_Create(app_state *AppState, v2f32 Pos , v2f32 Dim, entity_type Type)
 {
     ASSERT(AppState->EntityCount < ENTITY_MAX_COUNT);
     
@@ -88,8 +88,9 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
     if(!IsInitialized)
     {
         Entity_Create(AppState,
-                      (v2){Platform->WindowWidth / 2.0f, Platform->WindowHeight / 2.0f},
-                      (v2){Platform->WindowWidth, Platform->WindowHeight},
+                      v2f32Init(Platform->WindowWidth   / 2.0f,
+                                Platform->WindowHeight  / 2.0f),
+                      v2f32Init(240.0f, 40.0f),
                       Entity_guage);
         
         IsInitialized = 1;
@@ -99,7 +100,7 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
         AppState->DeltaTime += Platform->CurrentTime - Platform->LastTime;
         f32 MoveSpeed  = -200.0f *  AppState->DeltaTime;
         
-        v2 MousePos = { Platform->AppInput->UIControls.MousePos.X , Platform->AppInput->UIControls.MousePos.Y };
+        v2f32 MousePos = { Platform->AppInput->UIControls.MousePos.x , Platform->AppInput->UIControls.MousePos.y };
         // ************************************************
         // INPUT RESPONSE
         //*************************************************
@@ -114,14 +115,14 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
         // NOTE(MIGUEL): Input only for SRITE AKE GEO(player)
         if(Platform->AppInput[0].UIControls.KeyDown[KEY_w])
         {
-            Entity_Create(AppState, MousePos, (v2){200.0f, 200.0f}, Entity_guage);
+            Entity_Create(AppState, MousePos, v2f32Init(200.0f, 200.0f), Entity_guage);
         }
         if(Platform->AppInput[0].UIControls.KeyDown[KEY_s])
         {
             entity *Entity = AppState->Entities;
             
-            Entity->Pos.X  = Platform->WindowWidth  / 2.0f;
-            Entity->Pos.Y  = Platform->WindowHeight / 2.0f;
+            Entity->Pos.x  = Platform->WindowWidth  / 2.0f;
+            Entity->Pos.y  = Platform->WindowHeight / 2.0f;
         }
         {
             AppState->Throttle = 255.0f * (Platform->AppInput[0].DroneControls.NormalizedThrottle);
@@ -131,14 +132,15 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
         entity *Entity = AppState->Entities;
         for(u32 EntityIndex = 0; EntityIndex < AppState->EntityCount; EntityIndex++, Entity++)
         {
-            rect_v2 EntityBounds = { 0 };
+            rect_v2f32 EntityBounds = { 0 };
             
-            rect_v2_Init(&EntityBounds, &Entity->Dim, &Entity->Pos);
+            rect_v2f32_Init(&EntityBounds, &Entity->Dim, &Entity->Pos);
             
-            if(rect_v2_IsInRect(&EntityBounds, &MousePos) && Platform->AppInput[0].UIControls.MouseLeftButtonDown)
+            v2f32 NewMousePos = v2f32Init(MousePos.x, (f32)Platform->WindowHeight - MousePos.y);
+            
+            if(rect_v2f32_IsInRect(&EntityBounds, &NewMousePos) && Platform->AppInput[0].UIControls.MouseLeftButtonDown)
             {
-                Entity->Pos.X = MousePos.X;
-                Entity->Pos.Y = MousePos.Y;
+                Entity->Pos = NewMousePos;
             }
         }
         

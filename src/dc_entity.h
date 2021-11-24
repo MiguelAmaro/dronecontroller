@@ -17,8 +17,8 @@ struct entity
 {
     entity_type Type;
     
-    v2 Dim;
-    v2 Pos;
+    v2f32 Dim;
+    v2f32 Pos;
 };
 
 

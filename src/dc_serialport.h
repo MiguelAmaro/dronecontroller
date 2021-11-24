@@ -2,15 +2,39 @@
 //#include "RingBuffer.h"
 #include "LAL.h"
 
+#define DEVICE_QUEUE_SIZE 256
+
 typedef struct device device;
 struct device
 {
     HANDLE StreamHandle;
     b32 Connected;
-    u8  TransmitQueue[256];
-    u8  RecieveQueue [256];
+    u8  TransmitQueue[DEVICE_QUEUE_SIZE];
+    u8  TransmitQueueSize ;
+    u8  RecieveQueue [DEVICE_QUEUE_SIZE];
+    u8  RecieveQueueSize  ;
     u16 padding;
 };
+
+typedef enum
+{
+    ddc_dbg_req = (1 << 2),
+    ddc_dbg_ack,
+    dcc_mcu_clock_freq,
+    ddc_dma_dest_addr, 
+    ddc_dma_src_addr, 
+    ddc_print,
+    ddc_print_end,
+} device_debug_code;
+
+
+internaldef void
+DebugPrint()
+{
+    
+    
+    return;
+}
 
 global device g_SerialPortDevice = {0}; 
 
@@ -74,6 +98,8 @@ win32_SerialPort_InitDevice(device *Device)
     { return 0; }
     
     Device->Connected = 1;
+    Device->TransmitQueueSize = DEVICE_QUEUE_SIZE;
+    Device->RecieveQueueSize  = DEVICE_QUEUE_SIZE;
     
     return 1;
 }
@@ -116,6 +142,8 @@ win32_SerialPort_RecieveData(device *Device)
     u8 TempByte;
     DWORD BytesToRead;
     b32 ReceptionSuccessful = 0;
+    
+    memset(Device->RecieveQueue, 0, Device->RecieveQueueSize);
     
     int i = 0;
     

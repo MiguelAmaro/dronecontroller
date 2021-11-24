@@ -49,7 +49,7 @@ b32           win32_InitController         (controller *Controller, controller_i
 b32           win32_DirectInputLogError    (HRESULT result, const char* expectation);
 BOOL CALLBACK win32_DirectInputEnumDevices (LPCDIDEVICEINSTANCE device, LPVOID prevInstance);
 
-internal b32 win32_DirectInput_init(HWND window, HINSTANCE instance)
+internaldef b32 win32_DirectInput_init(HWND window, HINSTANCE instance)
 {
     //******************************
     // CREATING A DEVICE INTERFACE
@@ -203,8 +203,8 @@ HRESULT win32_DirectInputProcessFlightStickInput(controller *Controller, platfor
         return Result; // The Device should have been acquired during the Poll()
     }
     
-    Platform->AppInput->DroneControls.StickPos.X = JoystickState.lX;
-    Platform->AppInput->DroneControls.StickPos.Y = JoystickState.lY;
+    Platform->AppInput->DroneControls.StickPos.x = JoystickState.lX;
+    Platform->AppInput->DroneControls.StickPos.y = JoystickState.lY;
     
     return S_OK;
 }
@@ -268,6 +268,7 @@ BOOL CALLBACK win32_DirectInputEnumDevices(LPCDIDEVICEINSTANCE device, LPVOID pr
                                                                   &device->guidInstance,
                                                                   &g_Flightstick.Interface,
                                                                   NULL);
+            num_flight_devices++;
         }
         if(device->guidProduct.Data1 == throttle)
         {
@@ -275,14 +276,14 @@ BOOL CALLBACK win32_DirectInputEnumDevices(LPCDIDEVICEINSTANCE device, LPVOID pr
                                                                   &device->guidInstance,
                                                                   &g_Throttle.Interface,
                                                                   NULL);
+            num_flight_devices++;
         }
         
         win32_DirectInputLogError(Result, "Create a Device");
-        
-        num_flight_devices++;
     }
     
-    if(num_flight_devices == 2)
+    if(g_Flightstick.Interface &&
+       g_Throttle.Interface)
     {
         return DIENUM_STOP;
     }

@@ -8,6 +8,16 @@
 
 #define ENTITY_MAX_COUNT 256
 
+
+typedef struct glyph glyph;
+struct glyph
+{
+    u32   TexID; //GL Tex id
+    v2s32 Dim;
+    v2s32 Bearing;
+    u32   Advance;
+};
+
 typedef struct app_state app_state;
 struct app_state
 {
@@ -16,6 +26,10 @@ struct app_state
     
     entity Entities[ENTITY_MAX_COUNT];
     u32    EntityCount;
+    
+    glyph GlyphHash[256];
+    u32   GlyphHashCount;
+    u32   GlyphHashMaxCount;
 };
 
 typedef struct app_backbuffer app_backbuffer;

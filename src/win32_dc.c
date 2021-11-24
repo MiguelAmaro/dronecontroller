@@ -5,10 +5,10 @@
 #include <windows.h>
 #include <GLAD/glad.h>
 #include "win32_dc.h"
+#include "win32_directinput.c"
 #include "dc_program_options.h"
 #include "dc_platform.h"
 #include "dc_math.h"
-#include "win32_directinput.c"
 #include "dc_serialport.h"
 #include "dc.h"
 #include "dc_opengl.h"
@@ -27,10 +27,9 @@
 #include <conio.h>
 
 // TODO(MIGUEL): get freetype to work
-/*
 #include <ft2build.h>
 #include FT_FREETYPE_H
-*/
+
 // TODO(MIGUEL): Add openCV
 
 // global FT_Library  g_freetype_lib;
@@ -63,8 +62,188 @@ global platform g_Platform = {0};
 //
 
 
+typedef struct string8 string8;
+struct string8
+{
+    u8 *Data;
+    u32 Size;
+};
+
+typedef struct message8 message8;
+struct message8
+{
+    string8 Format;
+    void *Data;
+    // NOTE(MIGUEL): All data must be uniformly sized
+    u32 DataCount;
+    u32 DataSize;
+};
+
+
+internaldef void
+GlyphHashTableInit(app_state *AppState)
+{
+    AppState->GlyphHashCount    = 0;
+    AppState->GlyphHashMaxCount = 256;
+    
+    return;
+}
+
+internaldef glyph *
+GlyphHashTableLookup(app_state *AppState,
+                     u32 TextureID,
+                     v2s32 Dim,
+                     v2s32 Bearing,
+                     u32 Advance)
+{
+    u32 GlyphHashIndex = (TextureID * Bearing.x * Advance) % AppState->GlyphHashMaxCount;
+    
+    glyph *Found = NULL;
+    
+    
+    for(u32 Index = 0;  Index < AppState->GlyphHashMaxCount; Index++)
+    {
+        u32 Offset = (GlyphHashIndex + Index) % AppState->GlyphHashMaxCount;
+        glyph *Entry = AppState->GlyphHash + Offset;
+        
+        if(Entry->TexID == TextureID)
+        {
+            Found = Entry;
+            break;
+        }
+        
+        if(Entry->TexID == 0)
+        {
+            Entry->TexID   = TextureID;
+            Entry->Dim     = Dim;
+            Entry->Bearing = Bearing;
+            Entry->Advance = Advance;
+            break;
+        }
+    }
+    
+    return Found;
+}
+
+internaldef void
+GlyphHashTableFill(app_state *AppState)
+{
+    
+    FT_Library ft;
+    if (FT_Init_FreeType(&ft))
+    {
+        OutputDebugString("FreeType Error: Could not init FreeType Library");
+        ASSERT(0);
+    }
+    
+    FT_Face Face;
+    if (FT_New_Face(ft, "..\\res\\fonts\\cour.ttf", 0, &Face))
+    {
+        OutputDebugString("FreeType Error: Could not load Font");
+        ASSERT(0);
+    }
+    
+    FT_Set_Pixel_Sizes(Face, 0, 48);
+    
+    if (FT_Load_Char(Face, 'X', FT_LOAD_RENDER))
+    {
+        OutputDebugString("FreeType Error: Could not load Glyph");
+        ASSERT(0);
+    }
+    
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
+    
+    for(u32 CharIndex = 0; CharIndex < 128; CharIndex++)
+    {
+        if (FT_Load_Char(Face, CharIndex, FT_LOAD_RENDER))
+        {
+            OutputDebugString("FreeType Error: Could not load Glyph");
+            //ASSERT(0);
+            continue;
+        }
+        
+        // generate TextureID
+        u32 TextureID;
+        glGenTextures(1, &TextureID);
+        glBindTexture(GL_TEXTURE_2D, TextureID);
+        glTexImage2D(GL_TEXTURE_2D,
+                     0,
+                     GL_RED,
+                     Face->glyph->bitmap.width,
+                     Face->glyph->bitmap.rows,
+                     0,
+                     GL_RED,
+                     GL_UNSIGNED_BYTE,
+                     Face->glyph->bitmap.buffer);
+        
+        // set TextureID options
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        
+        // now store character for later use
+        
+        GlyphHashTableLookup(AppState,
+                             TextureID,
+                             v2s32Init(Face->glyph->bitmap.width, Face->glyph->bitmap.rows),
+                             v2s32Init(Face->glyph->bitmap_left , Face->glyph->bitmap_top),
+                             Face->glyph->advance.x);
+    }
+    
+    FT_Done_Face(Face);
+    FT_Done_FreeType(ft);
+    
+    return;
+}
+#if 0
+void RenderText(Shader &s, std::string text, float x, float y, float scale, glm::vec3 color)
+{
+    // activate corresponding render state	
+    s.Use();
+    glUniform3f(glGetUniformLocation(s.Program, "textColor"), color.x, color.y, color.z);
+    glActiveTexture(GL_TEXTURE0);
+    glBindVertexArray(VAO);
+    
+    // iterate through all characters
+    std::string::const_iterator c;
+    for (c = text.begin(); c != text.end(); c++)
+    {
+        Character ch = Characters[*c];
+        
+        float xpos = x + ch.Bearing.x * scale;
+        float ypos = y - (ch.Size.y - ch.Bearing.y) * scale;
+        
+        float w = ch.Size.x * scale;
+        float h = ch.Size.y * scale;
+        // update VBO for each character
+        float vertices[6][4] = {
+            { xpos,     ypos + h,   0.0f, 0.0f },            
+            { xpos,     ypos,       0.0f, 1.0f },
+            { xpos + w, ypos,       1.0f, 1.0f },
+            
+            { xpos,     ypos + h,   0.0f, 0.0f },
+            { xpos + w, ypos,       1.0f, 1.0f },
+            { xpos + w, ypos + h,   1.0f, 0.0f }           
+        };
+        // render glyph texture over quad
+        glBindTexture(GL_TEXTURE_2D, ch.textureID);
+        // update content of VBO memory
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices); 
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        // render quad
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        // now advance cursors for next glyph (note that advance is number of 1/64 pixels)
+        x += (ch.Advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
+    }
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+#endif
+
 // NOTE(MIGUEL): DEPRECATED - moving to opengl
-internal void 
+internaldef void 
 win32_update_Window(HDC DeviceContext, RECT *ClientRect, int X, int Y, int Width, int Height) {
     int WindowWidth  = ClientRect->right  - ClientRect->left;
     int WindowHeight = ClientRect->bottom - ClientRect->top ;
@@ -157,7 +336,7 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
     return(Result);
 }
 
-internal void
+internaldef void
 win32_ProcessKeyboardMessage(app_button_state *NewState, b32 IsDown)
 {
     if(NewState->EndedDown != IsDown)
@@ -169,7 +348,7 @@ win32_ProcessKeyboardMessage(app_button_state *NewState, b32 IsDown)
     return;
 }
 
-internal void
+internaldef void
 win32_ProcessPendingMessages(win32_State *State, app_input *Keyboard)
 {
     MSG message;
@@ -194,11 +373,11 @@ win32_ProcessPendingMessages(win32_State *State, app_input *Keyboard)
             case WM_MOUSEMOVE:
             {
                 //g_Platform.mouse_x_direction = g_Platform.mouse_x < (l_param & 0x0000FFFF)? (u32)(1): (u32)(-1);
-                g_Platform.AppInput[0].UIControls.MousePos.X = (message.lParam & 0x0000FFFF);
+                g_Platform.AppInput[0].UIControls.MousePos.x = (message.lParam & 0x0000FFFF);
                 
                 //g_Platform.mouse_y_direction = g_Platform.mouse_y < (l_param & 0xFFFF0000 >> 16)? (u32)(-1): (u32)(1);
-                g_Platform.AppInput[0].UIControls.MousePos.Y = ((message.lParam & 0xFFFF0000) >> 16);
-                printf("mouse y: %f \n", g_Platform.AppInput[0].UIControls.MousePos.Y);
+                g_Platform.AppInput[0].UIControls.MousePos.y = ((message.lParam & 0xFFFF0000) >> 16);
+                printf("mouse y: %f \n", g_Platform.AppInput[0].UIControls.MousePos.y);
                 
             } break;
             
@@ -358,7 +537,7 @@ win32_ProcessPendingMessages(win32_State *State, app_input *Keyboard)
     return;
 }
 
-internal void 
+internaldef void 
 win32_resize_DIB_Section(int Width, int Height) {
     if(g_BitmapMemory)
     {
@@ -382,6 +561,25 @@ win32_resize_DIB_Section(int Width, int Height) {
     return;
 }
 
+typedef struct win32_thread_info win32_thread_info;
+struct win32_thread_info
+{
+    u32 LogicalThreadIndex;
+};
+
+DWORD WINAPI
+ThreadProc(LPVOID lpParameter)
+{
+    u8 *StringToPrint = (u8 *)lpParameter;
+    
+    printf("%s", StringToPrint);
+    
+    
+    OutputDebugStringA(StringToPrint);
+    
+    return 0;
+}
+
 int CALLBACK 
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCode) 
 {
@@ -395,13 +593,34 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
 #endif
     
     //~ FREETYPE SETTUP
-	/*
+    /*
     s32 error = FT_Init_FreeType(&g_freetype_lib);
     if(error)
     {
         printf("Error initializeing freetype btich\n");
     }
     */
+    
+    u8 *Param = "Thread Started !!!\n\r";
+    
+    for(u32 ThreadIndex = 0; ThreadIndex < 15; ThreadIndex++)
+    {
+        win32_thread_info Info = { 0 };
+        
+        Info.LogicalThreadIndex = ThreadIndex;
+        DWORD ThreadID;
+        
+        
+        DWORD ThreadId;
+        
+        HANDLE ThreadHandle = CreateThread(0, 0,
+                                           ThreadProc,
+                                           Param,
+                                           0,
+                                           &ThreadId);
+        
+        CloseHandle(ThreadHandle);
+    }
     
     //**************************************
     // MAIN WINDOW SETUP
@@ -432,6 +651,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         
         g_Platform.WindowWidth  = INITIAL_WINDOW_WIDTH;
         g_Platform.WindowHeight = INITIAL_WINDOW_HEIGHT;
+        
         
         HWND Window = CreateWindowEx(0, WindowClass.lpszClassName,
                                      "Drone Controller",
@@ -553,6 +773,10 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
             MSG Message;
             
             
+            app_state *AppState = (app_state *)g_Platform.PermanentStorage;
+            GlyphHashTableInit(AppState);
+            GlyphHashTableFill(AppState);
+            
             win32_SerialPort_InitDevice(&g_SerialPortDevice);
             // TODO(MIGUEL): Set initialization to individual controller structures
             g_Platform.StickIsInitialized        = win32_DirectInput_init(Window, Instance);
@@ -598,7 +822,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 win32_ProcessPendingMessages(0, &g_Platform.AppInput[0]);
                 
                 //~ DYNAMIC RELOAD
-                /// application layer reload
+                /// application laye r reload
                 
                 
                 /// opengl shader reload
@@ -664,8 +888,18 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 {
                     win32_SerialPort_InitDevice(&g_SerialPortDevice);
                 }
-                printf("%s \n\r", g_SerialPortDevice.RecieveQueue);
+                if(g_SerialPortDevice.Connected)
+                {
+                    
+                    printf("%s \n\r", g_SerialPortDevice.RecieveQueue);
+                }
+                /*
+                for(string8_printqueue sting8_printqueue length)
+                {
+                    printf();
+                }
                 
+                */
                 //~ Software RENDERING
 #ifdef RENDERER_SOFTWARE
                 // Rendering
@@ -774,40 +1008,28 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 entity *Entity = AppState->Entities;
                 for(u32 EntityIndex = 0; EntityIndex < AppState->EntityCount; EntityIndex++, Entity++)
                 {
-                    mat3 ThottleWidgetTransform = GLM_MAT3_IDENTITY_INIT;
+                    //mat3 ThottleWidgetTransform = GLM_MAT3_IDENTITY_INIT;
+                    m4f32 ThrottleWidgetProjection = m4f32Orthographic(0.0f, g_Platform.WindowWidth,
+                                                                       0.0f, g_Platform.WindowHeight,
+                                                                       0.1f, 100.0f);
+                    
+                    
+                    m4f32 ThrottleWidgetTransform = m4f32Identity();
+                    m4f32 Trans  = m4f32Translate(v3f32Init(Entity->Pos.x, Entity->Pos.y, 0.0f));
+                    m4f32 Scale  = m4f32Scale(Entity->Dim.x / 2.0f, Entity->Dim.y / 2.0f, 1.0f);
+                    m4f32 Rotate = m4f32Identity();
+                    
+                    m4f32 World = m4f32Multiply(Scale, Trans);
+                    ThrottleWidgetTransform = m4f32Multiply(World, ThrottleWidgetProjection);
                     
                     GL_Call(glUseProgram(sprite_render_info.shader));
-                    
-                    glm_translate2d(ThottleWidgetTransform, 
-                                    (vec2)
-                                    {
-                                        2.0f *  (Entity->Pos.X / (f32)g_Platform.WindowWidth ) - 1.0f,
-                                        2.0f * -(Entity->Pos.Y / (f32)g_Platform.WindowHeight) + 1.0f
-                                    });
-                    glm_scale2d(ThottleWidgetTransform, 
-                                (vec2)
-                                {
-                                    Entity->Dim.X / (f32)g_Platform.WindowWidth,
-                                    Entity->Dim.Y / (f32)g_Platform.WindowHeight
-                                });
-                    
-                    local_persist f32 theta = 0.0;
-                    //glm_rotate2d(ThottleWidgetTransform, glm_rad(theta));
-                    theta += 0.1f;
                     /// LOCAL SPACE
-                    GL_Call(glUniformMatrix3fv(ThrottleTransformUniform, 1, 0, (f32 *)ThottleWidgetTransform));
+                    GL_Call(glUniformMatrix4fv(ThrottleTransformUniform, 1, 0, ThrottleWidgetTransform.e));
                     /// SCREEN SPACE
-                    GL_Call(glUniform2fv(WindowSizeUniform , 1, (vec2)
-                                         {
-                                             g_Platform.WindowWidth,
-                                             g_Platform.WindowHeight
-                                         }));
-                    GL_Call(glUniform2fv(ThrottlePosUniform , 1, (vec2)
-                                         {
-                                             Entity->Pos.X,//(Entity->Pos[0] / (f32)g_Platform.window_width ) ,
-                                             Entity->Pos.Y//-(Entity->Pos[1] / (f32)g_Platform.window_height)
-                                         }));
-                    GL_Call(glUniform2fv(ThrottleSizeUniform, 1, Entity->Dim.E));
+                    GL_Call(glUniform2fv(WindowSizeUniform , 1, v2f32Init(g_Platform.WindowWidth,
+                                                                          g_Platform.WindowHeight).c));
+                    GL_Call(glUniform2fv(ThrottlePosUniform , 1, Entity->Pos.c));
+                    GL_Call(glUniform2fv(ThrottleSizeUniform, 1, Entity->Dim.c));
                     
                     /// EXTRA SHIT
                     GL_Call(glUniform1f(sprite_render_info.uniform_throttle, g_Platform.AppInput[0].DroneControls.NormalizedThrottle));

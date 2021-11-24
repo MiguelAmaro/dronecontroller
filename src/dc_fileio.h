@@ -3,20 +3,6 @@
 #ifndef FLIGHTCONTROL_FILEIO_H
 #define FLIGHTCONTROL_FILEIO_H
 
-u32 
-FileIO_GetFileSize(readonly u8 *path) 
-{
-    FILE *File;
-    File = fopen(path, "r");
-    ASSERT(File);
-    
-    fseek(File, 0L, SEEK_END);
-    u32 size_bytes = ftell(File);
-    
-    return size_bytes;
-}
-
-
 void 
 BuildPrefixSuffixTable(u32* table, u32 table_size,readonly u8 *SearchTerm)
 {

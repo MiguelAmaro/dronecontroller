@@ -9,7 +9,7 @@
 
 #define NULLPTR       ((void *)0x00)
 #define readonly        const
-#define internal        static
+#define internaldef     static
 #define local_persist   static
 #define global          static
 
@@ -56,7 +56,7 @@ struct app_button_state
 typedef struct drone_controller_input drone_controller_input;
 struct drone_controller_input
 {
-    v2 StickPos;
+    v2f32 StickPos;
     
     f32 NormalizedThrottle;
 };
@@ -64,7 +64,7 @@ struct drone_controller_input
 typedef struct ui_controller_input ui_controller_input;
 struct ui_controller_input
 {
-    v2 MousePos;
+    v2f32 MousePos;
     
     b32 MouseLeftButtonDown;
     b32 MouseLeftButtonPressed;
