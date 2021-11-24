@@ -15,7 +15,7 @@ it's flight controller.
 (
  http://youtu.be/Qm_OS-8COwU
  )
-2. [[Khan Academy] Linear Independence       ] https://youtu.be/CrV1xCWdY-g
+2. [Khan Academy Linear Independence       ] https://youtu.be/CrV1xCWdY-g
 3. [[HandmadeHero] Basis  I] https://www.youtube.com/watch?v=lcmjmOfWPNU&feature=youtu.be
 4. [[HandmadeHero] Basis II] https://www.youtube.com/watch?v=2yKKcjBIaL0
 5. [[3Blue1Brown] Linear Combinations, Span, Basis]
