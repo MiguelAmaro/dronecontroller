@@ -1,42 +1,6 @@
 // NOTE(MIGUEL): Should This code go in the windows platfom layer?? and i just keep abastractions and generics here
-//#include "RingBuffer.h"
-#include "LAL.h"
 
 #define DEVICE_QUEUE_SIZE 256
-
-typedef struct device device;
-struct device
-{
-    HANDLE StreamHandle;
-    b32 Connected;
-    u8  TransmitQueue[DEVICE_QUEUE_SIZE];
-    u8  TransmitQueueSize ;
-    u8  RecieveQueue [DEVICE_QUEUE_SIZE];
-    u8  RecieveQueueSize  ;
-    u16 padding;
-};
-
-typedef enum
-{
-    ddc_dbg_req = (1 << 2),
-    ddc_dbg_ack,
-    dcc_mcu_clock_freq,
-    ddc_dma_dest_addr, 
-    ddc_dma_src_addr, 
-    ddc_print,
-    ddc_print_end,
-} device_debug_code;
-
-
-internaldef void
-DebugPrint()
-{
-    
-    
-    return;
-}
-
-global device g_SerialPortDevice = {0}; 
 
 
 // TODO(MIGUEL): bits[2]
@@ -60,6 +24,36 @@ enum telem_data_type
     Telem_v3f32 = 5,
     Telem_s32   = 6,
 };
+
+typedef enum telem_state telem_state;
+enum telem_state
+{
+    Telem_Ack
+};
+
+
+typedef struct device device;
+struct device
+{
+    HANDLE StreamHandle;
+    OVERLAPPED Overlapped;
+    b32 Connected;
+    u8  TransmitQueue[DEVICE_QUEUE_SIZE];
+    u8  TransmitQueueSize ;
+    u8  RecieveQueue [DEVICE_QUEUE_SIZE];
+    u8  RecieveQueueSize  ;
+    u16 padding;
+};
+
+internaldef void
+DebugPrint()
+{
+    
+    
+    return;
+}
+
+global device g_SerialPortDevice = {0}; 
 
 u32 TelemDataTypeLookUpTable[8] =
 {
@@ -125,16 +119,20 @@ win32_SerialPort_RecieveData(device *Device)
     
     int i = 0;
     
-    //do
-    
     DWORD Event;
-    if(WaitCommEvent(Device->StreamHandle, &Event, NULL))
     {
+        /*
+        if(WaitCommEvent(Device->StreamHandle, &Event, &Device->Overlapped))
+        if(Event & EV_DSR)
+        {
+            printf("dsr !!!");
+        }
+            */
         ReceptionSuccessful = ReadFile(Device->StreamHandle, //Handle of the Serial port
                                        &TempByte          ,
                                        sizeof(TempByte)   ,
                                        &BytesToRead       ,
-                                       NULL              );
+                                       NULL);
         
         
         if(!ReceptionSuccessful)
@@ -145,6 +143,27 @@ win32_SerialPort_RecieveData(device *Device)
         //000 0111
         u32 TelemetryMsgType     = (TempByte >> 6) & 0x2;
         u32 TelemetryMsgDataType = (TempByte >> 3) & 0x7;
+        
+        u32 TelemetryMsgBytesToRead = (u8)TempByte;
+        printf("Telemetry Data count: %d \n", TelemetryMsgBytesToRead);
+        ReceptionSuccessful = ReadFile(Device->StreamHandle, //Handle of the Serial port
+                                       &TempByte          ,
+                                       sizeof(TempByte)   ,
+                                       &BytesToRead       ,
+                                       NULL);
+        
+        u8 *Dest = Device->RecieveQueue;
+        for(u32 Byte = 0; Byte < TelemetryMsgBytesToRead; Byte++)
+        {
+            ReadFile(Device->StreamHandle, //Handle of the Serial port
+                     Dest++             ,
+                     sizeof(TempByte)   ,
+                     &BytesToRead       ,
+                     NULL);
+            
+        }
+        
+        printf("%s", Device->RecieveQueue);
         
         printf(PRINTF_BINARY_PATTERN_INT8"\n", PRINTF_BYTE_TO_BINARY_INT8(TempByte));
         switch(TelemetryMsgType)
@@ -173,11 +192,8 @@ win32_SerialPort_RecieveData(device *Device)
             } break;
             
         }
-        
-        Device->RecieveQueue[i] = TempByte;
-        i++;
     }
-    //while (BytesToRead > 0 && i < 1); //256);
+    
     
     return;
 }
@@ -197,7 +213,7 @@ win32_SerialPort_InitDevice(win32_state *Win32State, device *Device)
                                       0,
                                       NULL,
                                       OPEN_EXISTING,
-                                      FILE_FLAG_OVERLAPPED,
+                                      0, //FILE_FLAG_OVERLAPPED,
                                       NULL);
     
     
@@ -232,10 +248,25 @@ win32_SerialPort_InitDevice(win32_state *Win32State, device *Device)
     
     SetCommTimeouts(Device->StreamHandle, &TimeoutsComm);
     
-    b32 status = 0;
-    
+    DWORD Event;
     if(!SetCommMask(Device->StreamHandle, EV_RXCHAR))
     { return 0; }
+    if(!WaitCommEvent(Device->StreamHandle, &Event, NULL))
+    { return 0; }
+    /*
+    SetCommMask(Device->StreamHandle, EV_DSR | EV_CTS);
+    
+    Device->Overlapped.Internal     = 0;
+    Device->Overlapped.InternalHigh = 0;
+    Device->Overlapped.Offset       = 0;
+    Device->Overlapped.OffsetHigh   = 0;
+    Device->Overlapped.hEvent       = 0;
+    
+    Device->Overlapped.hEvent = CreateEvent(NULL,   // default security attributes 
+                                            TRUE,   // manual-reset event 
+                                            FALSE,  // not signaled 
+                                            NULL);  // no name
+    */
     
     Device->Connected = 1;
     Device->TransmitQueueSize = DEVICE_QUEUE_SIZE;

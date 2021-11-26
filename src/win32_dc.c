@@ -4,65 +4,38 @@
 
 #include <windows.h>
 #include <GLAD/glad.h>
+
 #include "win32_dc.h"
 #include "win32_directinput.c"
-#include "dc_program_options.h"
-#include "dc_platform.h"
-#include "dc_math.h"
-#include "dc_serialport.h"
+
 #include "dc.h"
+#include "dc_math.h"
+#include "dc_config.h"
+#include "dc_memory.h"
 #include "dc_opengl.h"
-#include "dc_renderer.h" // TODO(MIGUEL): get rid of this file
-#include "fast_pipe.h" // TODO(MIGUEL): get rid of this file
-#include <stdio.h>
-#include <string.h>
+#include "dc_platform.h"
+#include "dc_serialport.h"
+
 #include <GL/gl.h>
 #include <WGL/wglext.h>
-#include <io.h>
-#include <fcntl.h>
-#include <d3d11.h>
-#include <Winsock2.h>
-#include <Ws2tcpip.h>
-#include <strsafe.h>
-#include <conio.h>
 
-// TODO(MIGUEL): get freetype to work
+//#include "fast_pipe.h" // TODO(MIGUEL): get rid of this file
+//#include <io.h>
+//#include <stdio.h>
+//#include <fcntl.h>
+//#include <string.h>
+//#include <d3d11.h>
+//#include <Winsock2.h>
+//#include <Ws2tcpip.h>
+//#include <strsafe.h>
+//#include <conio.h>
+
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-// TODO(MIGUEL): Add openCV
-
-// global FT_Library  g_freetype_lib;
-
-//TODO(MIGUEL): Move back to the platform layer
-global BITMAPINFO g_BitmapInfo;
-global void *g_BitmapMemory;
-global int   g_BitmapWidth;
-global int   g_BitmapHeight;
-global int   g_BytesPerPixel = 4;
-
 global platform    g_Platform   = {0};
 global win32_state g_Win32State = {0};
-
-global vec4 color       = { 1.0f, 1.0f, 1.0f };
-global mat3 translation = GLM_MAT3_ZERO_INIT;
-global mat3 scale       = GLM_MAT3_ZERO_INIT;
-global mat3 rotation    = GLM_MAT3_ZERO_INIT;
-global vec3 scalefactor = { 100.0f, 100.0f, 0.0f };
-
-// NOTE(MIGUEL): this is controlling the window screen coordinates
-
-//
-//internal void 
-//win32_resize_DIB_Section(int Width, int Height);
-//
-//internal void 
-//win32_update_Window(HDC DeviceContext, RECT *ClientRect, int X, int Y, int Width, int Height);
-//
-//LRESULT CALLBACK 
-//win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l_param);
-//
-
+global win32_backbuffer g_BackBuffer = {0};
 
 typedef struct string8 string8;
 struct string8
@@ -71,55 +44,39 @@ struct string8
     u32 Size;
 };
 
-typedef struct message8 message8;
-struct message8
-{
-    string8 Format;
-    void *Data;
-    // NOTE(MIGUEL): All data must be uniformly sized
-    u32 DataCount;
-    u32 DataSize;
-};
-
-
 internaldef void
 GlyphHashTableInit(app_state *AppState)
 {
-    AppState->GlyphHashCount    = 0;
-    AppState->GlyphHashMaxCount = 256;
+    AppState->GlyphHash.Count    = 0;
+    AppState->GlyphHash.MaxCount = 256;
     
     return;
 }
 
-internaldef glyph *
-GlyphHashTableLookup(app_state *AppState,
-                     u32 TextureID,
+internaldef glyph
+GlyphHashTableInsert(glyph_hash *GlyphHash,
+                     u32   CharIndex,
+                     u32   TextureID,
                      v2s32 Dim,
                      v2s32 Bearing,
-                     u32 Advance)
+                     u32   Advance)
 {
-    u32 GlyphHashIndex = (TextureID * Bearing.x * Advance) % AppState->GlyphHashMaxCount;
+    u32 GlyphHashIndex = CharIndex % GlyphHash->MaxCount;
     
-    glyph *Found = NULL;
+    glyph Found = { 0 };
     
     
-    for(u32 Index = 0;  Index < AppState->GlyphHashMaxCount; Index++)
+    for(u32 NumVisited = 0;  NumVisited < GlyphHash->MaxCount; NumVisited++)
     {
-        u32 Offset = (GlyphHashIndex + Index) % AppState->GlyphHashMaxCount;
-        glyph *Entry = AppState->GlyphHash + Offset;
+        u32 Index = (GlyphHashIndex + NumVisited) % GlyphHash->MaxCount;
         
-        if(Entry->TexID == TextureID)
+        if(GlyphHash->CharIndex[Index] == 0)
         {
-            Found = Entry;
-            break;
-        }
-        
-        if(Entry->TexID == 0)
-        {
-            Entry->TexID   = TextureID;
-            Entry->Dim     = Dim;
-            Entry->Bearing = Bearing;
-            Entry->Advance = Advance;
+            GlyphHash->CharIndex[Index] = CharIndex;
+            GlyphHash->TexID    [Index] = TextureID;
+            GlyphHash->Dim      [Index] = Dim;
+            GlyphHash->Bearing  [Index] = Bearing;
+            GlyphHash->Advance  [Index] = Advance;
             break;
         }
     }
@@ -127,10 +84,38 @@ GlyphHashTableLookup(app_state *AppState,
     return Found;
 }
 
+
+internaldef glyph
+GlyphHashTableLookup(glyph_hash *GlyphHash, u32   CharIndex)
+{
+    u32 GlyphHashIndex = CharIndex % GlyphHash->MaxCount;
+    
+    glyph Found = { 0 };
+    
+    for(u32 NumVisited = 0;  NumVisited < GlyphHash->MaxCount; NumVisited++)
+    {
+        u32 Index = (GlyphHashIndex + NumVisited) % GlyphHash->MaxCount;
+        
+        if(GlyphHash->CharIndex[Index] == CharIndex)
+        {
+            Found.CharIndex = GlyphHash->CharIndex[Index];
+            Found.TexID     = GlyphHash->TexID  [Index];
+            Found.Dim       = GlyphHash->Dim    [Index];
+            Found.Bearing   = GlyphHash->Bearing[Index];
+            Found.Advance   = GlyphHash->Advance[Index];
+            break;
+        }
+    }
+    
+    
+    return Found;
+}
+
+
 internaldef void
 GlyphHashTableFill(app_state *AppState)
 {
-    
+    // NOTE(MIGUEL): Move this to app state maybe?
     FT_Library ft;
     if (FT_Init_FreeType(&ft))
     {
@@ -147,24 +132,18 @@ GlyphHashTableFill(app_state *AppState)
     
     FT_Set_Pixel_Sizes(Face, 0, 48);
     
-    if (FT_Load_Char(Face, 'X', FT_LOAD_RENDER))
-    {
-        OutputDebugString("FreeType Error: Could not load Glyph");
-        ASSERT(0);
-    }
-    
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
+    // disable byte-alignment restriction
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     
     for(u32 CharIndex = 0; CharIndex < 128; CharIndex++)
     {
         if (FT_Load_Char(Face, CharIndex, FT_LOAD_RENDER))
         {
             OutputDebugString("FreeType Error: Could not load Glyph");
-            //ASSERT(0);
+            ASSERT(0);
             continue;
         }
         
-        // generate TextureID
         u32 TextureID;
         glGenTextures(1, &TextureID);
         glBindTexture(GL_TEXTURE_2D, TextureID);
@@ -178,48 +157,61 @@ GlyphHashTableFill(app_state *AppState)
                      GL_UNSIGNED_BYTE,
                      Face->glyph->bitmap.buffer);
         
-        // set TextureID options
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         
-        // now store character for later use
-        
-        GlyphHashTableLookup(AppState,
+        GlyphHashTableInsert(&AppState->GlyphHash,
+                             CharIndex,
                              TextureID,
                              v2s32Init(Face->glyph->bitmap.width, Face->glyph->bitmap.rows),
                              v2s32Init(Face->glyph->bitmap_left , Face->glyph->bitmap_top),
                              Face->glyph->advance.x);
     }
     
+    glBindTexture(GL_TEXTURE_2D, 0);
+    
     FT_Done_Face(Face);
     FT_Done_FreeType(ft);
     
     return;
 }
-#if 0
-void RenderText(Shader &s, std::string text, float x, float y, float scale, glm::vec3 color)
+
+void RenderText(glyph_hash *GlyphHash, opengl_render_info *Info, str8 Text, f32 x, f32 y, f32 Scale, v3f32 Color)
 {
-    // activate corresponding render state	
-    s.Use();
-    glUniform3f(glGetUniformLocation(s.Program, "textColor"), color.x, color.y, color.z);
-    glActiveTexture(GL_TEXTURE0);
-    glBindVertexArray(VAO);
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
-    // iterate through all characters
-    std::string::const_iterator c;
-    for (c = text.begin(); c != text.end(); c++)
+    m4f32 GlyphProjection = m4f32Orthographic(0.0f, g_Platform.WindowWidth,
+                                              0.0f, g_Platform.WindowHeight,
+                                              0.1f, 100.0f);
+    
+    m4f32 GlyphTransform = GlyphProjection;
+    
+    GL_Call(glUseProgram(Info->ShaderID));
+    
+    GL_Call(glUniformMatrix4fv(Info->UThrottleTransform, 1, 0, GlyphTransform.e));
+    glUniform3f(glGetUniformLocation(Info->ShaderID, "TextColor"), Color.x, Color.y, Color.z);
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindVertexArray(Info->VertexAttribID);
+    
+    for (u32 Index = 0; Index < Text.Count; Index++)
     {
-        Character ch = Characters[*c];
+        u32 Char = Text.String[Index];
         
-        float xpos = x + ch.Bearing.x * scale;
-        float ypos = y - (ch.Size.y - ch.Bearing.y) * scale;
+        glyph Glyph = GlyphHashTableLookup(GlyphHash, Char);
         
-        float w = ch.Size.x * scale;
-        float h = ch.Size.y * scale;
-        // update VBO for each character
-        float vertices[6][4] = {
+        float xpos = x + Glyph.Bearing.x * Scale;
+        float ypos = y - (Glyph.Dim.y - Glyph.Bearing.y) * Scale;
+        
+        float w = Glyph.Dim.x * Scale;
+        float h = Glyph.Dim.y * Scale;
+        
+        float vertices[6][4] =
+        {
             { xpos,     ypos + h,   0.0f, 0.0f },            
             { xpos,     ypos,       0.0f, 1.0f },
             { xpos + w, ypos,       1.0f, 1.0f },
@@ -228,33 +220,58 @@ void RenderText(Shader &s, std::string text, float x, float y, float scale, glm:
             { xpos + w, ypos,       1.0f, 1.0f },
             { xpos + w, ypos + h,   1.0f, 0.0f }           
         };
+        
         // render glyph texture over quad
-        glBindTexture(GL_TEXTURE_2D, ch.textureID);
+        glBindTexture(GL_TEXTURE_2D, Glyph.TexID);
         // update content of VBO memory
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, Info->VertexBufferID);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices); 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         // render quad
         glDrawArrays(GL_TRIANGLES, 0, 6);
         // now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-        x += (ch.Advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
+        x += (Glyph.Advance >> 6) * Scale; // bitshift by 6 to get value in pixels (2^6 = 64)
     }
+    
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
-#endif
 
-// NOTE(MIGUEL): DEPRECATED - moving to opengl
+// NOTE(MIGUEL): Should i kill these 2 functions?????
 internaldef void 
-win32_UpdateWindow(HDC DeviceContext, RECT *ClientRect, int X, int Y, int Width, int Height) {
-    int WindowWidth  = ClientRect->right  - ClientRect->left;
-    int WindowHeight = ClientRect->bottom - ClientRect->top ;
+win32_UpdateWindow(HDC DeviceContext, u32 Width, u32 Height)
+{
     StretchDIBits(DeviceContext,
-                  0, 0, g_BitmapWidth, g_BitmapHeight,
-                  0, 0, WindowWidth, WindowHeight,
-                  g_BitmapMemory                   ,
-                  &g_BitmapInfo                    ,
+                  0, 0, g_BackBuffer.Width, g_BackBuffer.Height,
+                  0, 0, g_Platform.WindowWidth, g_Platform.WindowHeight,
+                  g_BackBuffer.Data,
+                  &g_BackBuffer.BitmapInfo,
                   DIB_RGB_COLORS, SRCCOPY);
+    return;
+}
+
+internaldef void 
+win32_ResizeDIBSection(int Width, int Height)
+{
+    if(g_BackBuffer.Data)
+    {
+        VirtualFree(g_BackBuffer.Data, 0, MEM_RELEASE);
+    }
+    
+    g_BackBuffer.Width  = Width;
+    g_BackBuffer.Height = Height;
+    
+    g_BackBuffer.BitmapInfo.bmiHeader.biSize        = sizeof(g_BackBuffer.BitmapInfo.bmiHeader);
+    g_BackBuffer.BitmapInfo.bmiHeader.biWidth       =  g_BackBuffer.Width;
+    g_BackBuffer.BitmapInfo.bmiHeader.biHeight      = -g_BackBuffer.Height;
+    g_BackBuffer.BitmapInfo.bmiHeader.biPlanes      = 1;
+    g_BackBuffer.BitmapInfo.bmiHeader.biBitCount    = 32;
+    g_BackBuffer.BitmapInfo.bmiHeader.biCompression = BI_RGB;
+    
+    
+    u32 BitmapMemorySize = (Width * Height) * g_BackBuffer.BytesPerPixel;
+    g_BackBuffer.Data = VirtualAlloc(0, BitmapMemorySize, MEM_COMMIT,PAGE_READWRITE);
+    
     return;
 }
 
@@ -272,9 +289,11 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
         {
             RECT ClientRect;
             GetClientRect(Window, &ClientRect); //Get RECT of window excludes borders
+            HDC DeviceContext = GetDC(Window);
             g_Platform.WindowWidth  = ClientRect.right  - ClientRect.left;
             g_Platform.WindowHeight = ClientRect.bottom - ClientRect.top ;
-            //win32_resize_DIB_Section(Width, Height);
+            win32_ResizeDIBSection(g_Platform.WindowWidth, g_Platform.WindowHeight);
+            win32_UpdateWindow(DeviceContext, g_Platform.WindowWidth, g_Platform.WindowHeight);
         }
         break;
         case WM_CLOSE:
@@ -294,18 +313,16 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
         break;
         case WM_PAINT:
         {
-            // NOTE(MIGUEL): WILL PAINT WITH OPEN GL NOT WINDOWS
+            // NOTE(MIGUEL): WILL PAINT WITH OPEN GL NOT WINDOWS???
             PAINTSTRUCT Paint;
             HDC DeviceContext = BeginPaint(Window, &Paint);
-            int X = Paint.rcPaint.left;
-            int Y = Paint.rcPaint.top;
-            int Width  = Paint.rcPaint.right  - Paint.rcPaint.left;
-            int Height = Paint.rcPaint.bottom - Paint.rcPaint.top ;
-            
             RECT ClientRect;
-            //GetClientRect(Window, &ClientRect); //Get RECT of window excludes borders
+            GetClientRect(Window, &ClientRect); //Get RECT of window excludes borders
             
-            win32_UpdateWindow(DeviceContext, &ClientRect, X, Y, Width, Height);
+            g_Platform.WindowWidth  = ClientRect.right  - ClientRect.left;
+            g_Platform.WindowHeight = ClientRect.bottom - ClientRect.top ;
+            
+            win32_UpdateWindow(DeviceContext, g_Platform.WindowWidth, g_Platform.WindowHeight);
             EndPaint(Window, &Paint);
         }
         break;
@@ -534,47 +551,11 @@ win32_ProcessPendingMessages(win32_state *State, app_input *Keyboard)
     return;
 }
 
-internaldef void 
-win32_resize_DIB_Section(int Width, int Height) {
-    if(g_BitmapMemory)
-    {
-        VirtualFree(g_BitmapMemory, 0, MEM_RELEASE);
-    }
-    
-    g_BitmapWidth  = Width;
-    g_BitmapHeight = Height;
-    
-    g_BitmapInfo.bmiHeader.biSize        = sizeof(g_BitmapInfo.bmiHeader);
-    g_BitmapInfo.bmiHeader.biWidth       = g_BitmapWidth;
-    g_BitmapInfo.bmiHeader.biHeight      = -g_BitmapHeight;
-    g_BitmapInfo.bmiHeader.biPlanes      = 1;
-    g_BitmapInfo.bmiHeader.biBitCount    = 32;
-    g_BitmapInfo.bmiHeader.biCompression = BI_RGB;
-    
-    
-    int g_BitmapMemorySize = (Width * Height)*g_BytesPerPixel;
-    g_BitmapMemory = VirtualAlloc(0, g_BitmapMemorySize, MEM_COMMIT,PAGE_READWRITE);
-    
-    return;
-}
-
 int CALLBACK 
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCode) 
 {
-#if 1
     AllocConsole();
     freopen("CONOUT$", "w", stdout);
-#else
-    /// Use Refterm Fast pipe
-    //ASSERT(USE_FAST_PIPE_IF_AVAILABLE());
-    
-#endif
-    
-    //**************************************
-    // MAIN WINDOW SETUP
-    //
-    // DEFINING WINDOW CLASS TO REGISTER
-    //**************************************
     
     WNDCLASS WindowClass      = {0};
     WindowClass.style         = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
@@ -583,23 +564,10 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
     //WindowClass.hIcon;
     WindowClass.lpszClassName = "MyWindowClass";
     
-    
-    //**************************************
-    // MAIN WINDOW SETUP
-    //
-    // REGISTER WINDOW CLASS WITH OS
-    //**************************************
     if(RegisterClass(&WindowClass)) 
     {
-        //**************************************
-        // MAIN WINDOW SETUP
-        //
-        // CREATE THE WINDOW AND DISPLAY IT
-        //**************************************
-        
         g_Platform.WindowWidth  = INITIAL_WINDOW_WIDTH;
         g_Platform.WindowHeight = INITIAL_WINDOW_HEIGHT;
-        
         
         HWND Window = CreateWindowEx(0, WindowClass.lpszClassName,
                                      "Drone Controller",
@@ -608,8 +576,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                                      g_Platform.WindowWidth, g_Platform.WindowHeight,
                                      0, 0, Instance, 0);
         
-        
-#ifdef RENDERER_OPENGL
+#if RENDERER_OPENGL
         HDC gl_device_context = GetDC(Window);
         HGLRC gl_real_context = win32_Init_OpenGL(gl_device_context);
         
@@ -634,17 +601,19 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         
         // PLATFORM INITIALIZATION
         {
+            g_Win32State.MainMemoryBlockSize = (PERMANENT_STORAGE_SIZE +
+                                                TRANSIENT_STORAGE_SIZE);
+            
+            g_Win32State.MainMemoryBlock = VirtualAlloc(0, g_Win32State.MainMemoryBlockSize,
+                                                        MEM_COMMIT | MEM_RESERVE,
+                                                        PAGE_READWRITE);
+            
             g_Platform.PermanentStorageSize = PERMANENT_STORAGE_SIZE;
-            g_Platform.PermanentStorage     = VirtualAlloc(0, 
-                                                           g_Platform.PermanentStorageSize,
-                                                           MEM_COMMIT | MEM_RESERVE,
-                                                           PAGE_READWRITE);
+            g_Platform.PermanentStorage     = g_Win32State.MainMemoryBlock;
             
             g_Platform.TransientStorageSize = TRANSIENT_STORAGE_SIZE;
-            g_Platform.TransientStorage     = VirtualAlloc(0, 
-                                                           g_Platform.TransientStorageSize,
-                                                           MEM_COMMIT | MEM_RESERVE,
-                                                           PAGE_READWRITE);
+            g_Platform.TransientStorage     = ((u8 *)g_Win32State.MainMemoryBlock +
+                                               g_Platform.PermanentStorageSize);
             
             g_Platform.TargetSecondsPerFrame = 60.0f;
         }
@@ -652,11 +621,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         App_Init(&g_Platform);
         
         //~ INIT OPENGL RENDER STUFF
-        
-        // INIT SPRITE
-        
-        // TODO(MIGUEL): make this implicit
-        f32 sprite_vertices[] =
+        f32 SpriteVerts[] =
         {
             -1.0f, -1.0f,
             1.0f, -1.0f,
@@ -669,58 +634,67 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         
         //Sprite.vertices = sprite_vertices;
 #if RENDERER_OPENGL
-        opengl_render_info sprite_render_info;
-        OpenGL_VertexBuffer_Create(&(sprite_render_info.vertex_buffer_id), sprite_vertices, sizeof(sprite_vertices));
+        opengl_render_info *Sprite = &OpenGLRenderer.Models[0];
+        opengl_render_info *Glyph  = &OpenGLRenderer.Models[1];
         
-        GL_Call(glGenVertexArrays(1, &sprite_render_info.vertex_attributes_id));
-        GL_Call(glBindVertexArray(sprite_render_info.vertex_attributes_id));
+        OpenGL_CreateVertexBuffer(&Sprite->VertexBufferID,
+                                  SpriteVerts,
+                                  sizeof(SpriteVerts),
+                                  GL_STATIC_DRAW);
+        
+        GL_Call(glGenVertexArrays(1, &Sprite->VertexAttribID));
+        GL_Call(glBindVertexArray(    Sprite->VertexAttribID));
         
         GL_Call(glEnableVertexAttribArray(0));
         GL_Call(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(f32), (void *)0x00));
         
-        WIN32_FIND_DATAA CurrentShaderFileInfo = {0};
-        
-        FindFirstFileA("../res/shaders/throttle.glsl",
-                       &CurrentShaderFileInfo);
-        
-        CopyFile("../res/shaders/throttle.glsl",
-                 "../res/shaders/throttle_inuse_a.glsl", 0);
-        
-        size_t ShaderFileSize = ((CurrentShaderFileInfo.nFileSizeHigh << 32) |
-                                 (CurrentShaderFileInfo.nFileSizeLow));
-        
-        HANDLE InUseShaderFileA = 0;
-        HANDLE InUseShaderFileB = 0;
-        
-        InUseShaderFileA = CreateFileA("../res/shaders/throttle_inuse_a.glsl",
-                                       GENERIC_READ, 0, 0,
-                                       OPEN_EXISTING,
-                                       FILE_FLAG_DELETE_ON_CLOSE,
-                                       0);
-        ASSERT(InUseShaderFileA);
-        
-        OpenGL_LoadShaderFromSource(&sprite_render_info.shader,
-                                    "../res/shaders/throttle.glsl",
-                                    InUseShaderFileA, ShaderFileSize);
-        
+        OpenGL_CreateShader(Sprite,
+                            "../res/shaders/throttle.glsl",
+                            sizeof("../res/shaders/throttle.glsl"));
         
         // UNBIND BUFFER
         GL_Call(glBindBuffer(GL_ARRAY_BUFFER, 0)); 
         GL_Call(glBindVertexArray(0));
         
-        sprite_render_info.uniform_throttle = glGetUniformLocation(sprite_render_info.shader, "ThrottleValue"  );
-        u32 WindowSizeUniform        = glGetUniformLocation(sprite_render_info.shader, "WindowSize"  );
-        u32 DeltaTimeUniform         = glGetUniformLocation(sprite_render_info.shader, "DeltaTime"  );
-        u32 ThrottleSizeUniform      = glGetUniformLocation(sprite_render_info.shader, "UISize"  );
-        u32 ThrottlePosUniform       = glGetUniformLocation(sprite_render_info.shader, "UIPos"  );
-        u32 ThrottleTransformUniform = glGetUniformLocation(sprite_render_info.shader, "Transform"  );
+        Sprite->UThrottle            = glGetUniformLocation(Sprite->ShaderID, "ThrottleValue"  );
+        
+        Sprite->UWindowSize        = glGetUniformLocation(Sprite->ShaderID, "WindowSize"  );
+        Sprite->UDeltaTime         = glGetUniformLocation(Sprite->ShaderID, "DeltaTime"  );
+        Sprite->UThrottleSize      = glGetUniformLocation(Sprite->ShaderID, "UISize"  );
+        Sprite->UThrottlePos       = glGetUniformLocation(Sprite->ShaderID, "UIPos"  );
+        Sprite->UThrottleTransform = glGetUniformLocation(Sprite->ShaderID, "Transform"  );
+        //-
+        OpenGL_CreateVertexBuffer(&Glyph->VertexBufferID,
+                                  NULL,
+                                  sizeof(f32) * 6 * 4,
+                                  GL_DYNAMIC_DRAW);
+        
+        GL_Call(glGenVertexArrays(1, &Glyph->VertexAttribID));
+        GL_Call(glBindVertexArray(    Glyph->VertexAttribID));
+        
+        GL_Call(glEnableVertexAttribArray(0));
+        GL_Call(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(f32), (void *)0x00));
+        
+        // UNBIND BUFFER
+        GL_Call(glBindBuffer(GL_ARRAY_BUFFER, 0)); 
+        GL_Call(glBindVertexArray(0));
+        
+        OpenGL_CreateShader(Glyph,
+                            "../res/shaders/text.glsl",
+                            sizeof("../res/shaders/text.glsl"));
+        
+        Glyph->UThrottle            = glGetUniformLocation(Glyph->ShaderID, "ThrottleValue"  );
+        
+        Glyph->UWindowSize        = glGetUniformLocation(Glyph->ShaderID, "WindowSize"  );
+        Glyph->UDeltaTime         = glGetUniformLocation(Glyph->ShaderID, "DeltaTime"  );
+        Glyph->UThrottleSize      = glGetUniformLocation(Glyph->ShaderID, "UISize"  );
+        Glyph->UThrottlePos       = glGetUniformLocation(Glyph->ShaderID, "UIPos"  );
+        Glyph->UThrottleTransform = glGetUniformLocation(Glyph->ShaderID, "Transform"  );
+        
 #endif
         
         if(Window)
         {
-            MSG Message;
-            
-            
             app_state *AppState = (app_state *)g_Platform.PermanentStorage;
             GlyphHashTableInit(AppState);
             GlyphHashTableFill(AppState);
@@ -731,59 +705,28 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
             
             
             s64 performance_counter_frequency   = 1;
-            { 
-                LARGE_INTEGER freq              = { 0LL };
-                
-                QueryPerformanceFrequency(&freq);
-                
-                performance_counter_frequency = freq.QuadPart;
-            }
+            LARGE_INTEGER freq              = { 0LL };
+            QueryPerformanceFrequency(&freq);
+            performance_counter_frequency = freq.QuadPart;
             
             LARGE_INTEGER begin_frame_time_data = { 0LL };
             LARGE_INTEGER end_frame_time_data   = { 0LL };
             
-            //**************************************
-            // MAIN PROGRAM LOOP
-            //
-            // MESSAGE PROCESSING AND RENDERING
-            //**************************************
+            /// MAIN LOOP
             while(!g_Platform.QuitApp)
             {
                 
                 g_Platform.LastTime     = g_Platform.CurrentTime;
                 g_Platform.CurrentTime += 1 / g_Platform.TargetSecondsPerFrame;
                 s64 desired_frame_time_counts = performance_counter_frequency / g_Platform.TargetSecondsPerFrame;
-                
                 QueryPerformanceCounter(&begin_frame_time_data);
                 
-                /*
-                while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
-                {
-                    if(Message.message == WM_QUIT)
-                    {
-                        g_Platform.quit = true;
-                    }
-                    TranslateMessage(&Message);
-                    DispatchMessage (&Message);
-                }
-                */
+                
                 win32_ProcessPendingMessages(0, &g_Platform.AppInput[0]);
                 
-                //~ DYNAMIC RELOAD
-                /// application laye r reload
+                //~ INPUT
                 
-                
-                /// opengl shader reload
-                
-                
-                /// directx11 shader reload
-                
-                
-                // ************************************************
-                // INPUT
-                //********=*****************************************
-                
-                //~ FLIGHTSTICK
+                //- FLIGHTSTICK
                 
                 // NOTE(MIGUEL): rename stick_is_inithalized
                 if(g_Platform.StickIsInitialized)
@@ -792,7 +735,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                     win32_DirectInputProcessFlightStickInput(&g_Flightstick, &g_Platform);
                 }
                 
-                //~ SERIALPORT 
+                //- SERIALPORT 
                 
                 if(g_SerialPortDevice.Connected)
                 {
@@ -804,26 +747,21 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                     win32_SerialPort_InitDevice(&g_Win32State, &g_SerialPortDevice);
                 }
                 
-                // ************************************************
-                // PROCESSING
-                //*************************************************
+                //~ PROCESSING
                 app_backbuffer AppRenderBuffer = { 0 };
-                AppRenderBuffer.Data          = g_BitmapMemory;
-                AppRenderBuffer.Width         = g_BitmapWidth;
-                AppRenderBuffer.Height        = g_BitmapHeight;
-                AppRenderBuffer.BytesPerPixel = g_BytesPerPixel;
+                AppRenderBuffer.Data          = g_BackBuffer.Data;
+                AppRenderBuffer.Width         = g_BackBuffer.Width;
+                AppRenderBuffer.Height        = g_BackBuffer.Height;
+                AppRenderBuffer.BytesPerPixel = g_BackBuffer.BytesPerPixel;
                 
                 g_Platform.QuitApp |= App_Update(&AppRenderBuffer, &g_Platform);
                 
                 
-                // ************************************************
-                // OUTPUT
-                //*************************************************
-                
-                //~ FLIGHTSTICK
                 
                 
-                //~ SERIALPORT
+                //~ OUTPUT
+                
+                //- SERIALPORT
                 
                 if(g_SerialPortDevice.Connected)
                 {
@@ -839,14 +777,9 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                     
                     //printf("%d \n\r", (u32)g_SerialPortDevice.RecieveQueue);
                 }
-                /*
-                for(string8_printqueue sting8_printqueue length)
-                {
-                }
-                */
                 
-                //~ Software RENDERING
-#ifdef RENDERER_SOFTWARE
+                //- SOFTWARE RENDERING
+#if RENDERER_SOFTWARE
                 // Rendering
                 HDC DeviceContext = GetDC(Window);
                 RECT ClientRect;
@@ -857,80 +790,10 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 ReleaseDC(Window, DeviceContext);
                 
 #endif
-                //~ OPENGL RENDERING
-#ifdef RENDERER_OPENGL
-                
-                WIN32_FIND_DATAA UpdatedShaderFileInfo = {0};
-                
-                
-                FindFirstFileA("../res/shaders/throttle.glsl",
-                               &UpdatedShaderFileInfo);
-                
-                if((UpdatedShaderFileInfo.ftLastWriteTime.dwLowDateTime !=
-                    CurrentShaderFileInfo.ftLastWriteTime.dwLowDateTime) ||
-                   (UpdatedShaderFileInfo.ftLastWriteTime.dwHighDateTime !=
-                    CurrentShaderFileInfo.ftLastWriteTime.dwHighDateTime)) 
-                {
-                    u32 NewShader = 0;
-                    
-                    if(InUseShaderFileA)
-                    {
-                        
-                        CopyFile("../res/shaders/throttle.glsl",
-                                 "../res/shaders/throttle_inuse_b.glsl", 0);
-                        
-                        
-                        size_t ShaderFileSize = ((UpdatedShaderFileInfo.nFileSizeHigh << 32) |
-                                                 (UpdatedShaderFileInfo.nFileSizeLow));
-                        
-                        InUseShaderFileB = CreateFileA("../res/shaders/throttle_inuse_b.glsl",
-                                                       GENERIC_READ, 0, 0,
-                                                       OPEN_EXISTING,
-                                                       FILE_FLAG_DELETE_ON_CLOSE,
-                                                       0);
-                        
-                        if(OpenGL_LoadShaderFromSource(&NewShader, "../res/shaders/throttle_inuse_b.glsl",
-                                                       InUseShaderFileB, ShaderFileSize))
-                        {
-                            glDeleteShader(sprite_render_info.shader);
-                            sprite_render_info.shader = NewShader;
-                        }
-                        
-                        CloseHandle(InUseShaderFileA);
-                        InUseShaderFileA = 0;
-                        
-                        CurrentShaderFileInfo.ftLastWriteTime =
-                            UpdatedShaderFileInfo.ftLastWriteTime;
-                    }
-                    else if(InUseShaderFileB)
-                    {
-                        
-                        CopyFile("../res/shaders/throttle.glsl",
-                                 "../res/shaders/throttle_inuse_a.glsl", 0);
-                        
-                        
-                        size_t ShaderFileSize = ((UpdatedShaderFileInfo.nFileSizeHigh << 32) |
-                                                 (UpdatedShaderFileInfo.nFileSizeLow));
-                        
-                        InUseShaderFileA = CreateFileA("../res/shaders/throttle_inuse_a.glsl",
-                                                       GENERIC_READ, 0, 0,
-                                                       OPEN_EXISTING,
-                                                       FILE_FLAG_DELETE_ON_CLOSE,
-                                                       0);
-                        
-                        if(OpenGL_LoadShaderFromSource(&NewShader, "../res/shaders/throttle_inuse_a.glsl",
-                                                       InUseShaderFileA, ShaderFileSize))
-                        {
-                            glDeleteShader(sprite_render_info.shader);
-                            sprite_render_info.shader = NewShader;
-                        }
-                        
-                        CloseHandle(InUseShaderFileB);
-                        InUseShaderFileB = 0;
-                        
-                        CurrentShaderFileInfo.ftLastWriteTime = UpdatedShaderFileInfo.ftLastWriteTime;
-                    }
-                }
+                //- OPENGL RENDERING
+#if RENDERER_OPENGL
+                OpenGL_HotSwapShader(&OpenGLRenderer.Models[0]);
+                OpenGL_HotSwapShader(&OpenGLRenderer.Models[1]);
                 
                 if(g_Platform.WindowWidth  != OpenGLRenderer.CurrentWidth || g_Platform.WindowHeight != OpenGLRenderer.CurrentHeight)
                 {
@@ -943,16 +806,11 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                 
-                local_persist b32 first_render = true;
-                
-                // SPRITE RENDERER_01
-                
                 app_state *AppState = (app_state *)g_Platform.PermanentStorage;
                 
                 entity *Entity = AppState->Entities;
                 for(u32 EntityIndex = 0; EntityIndex < AppState->EntityCount; EntityIndex++, Entity++)
                 {
-                    //mat3 ThottleWidgetTransform = GLM_MAT3_IDENTITY_INIT;
                     m4f32 ThrottleWidgetProjection = m4f32Orthographic(0.0f, g_Platform.WindowWidth,
                                                                        0.0f, g_Platform.WindowHeight,
                                                                        0.1f, 100.0f);
@@ -966,41 +824,37 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                     m4f32 World = m4f32Multiply(Scale, Trans);
                     ThrottleWidgetTransform = m4f32Multiply(World, ThrottleWidgetProjection);
                     
-                    GL_Call(glUseProgram(sprite_render_info.shader));
-                    /// LOCAL SPACE
-                    GL_Call(glUniformMatrix4fv(ThrottleTransformUniform, 1, 0, ThrottleWidgetTransform.e));
-                    /// SCREEN SPACE
-                    GL_Call(glUniform2fv(WindowSizeUniform , 1, v2f32Init(g_Platform.WindowWidth,
-                                                                          g_Platform.WindowHeight).c));
-                    GL_Call(glUniform2fv(ThrottlePosUniform , 1, Entity->Pos.c));
-                    GL_Call(glUniform2fv(ThrottleSizeUniform, 1, Entity->Dim.c));
+                    GL_Call(glUseProgram(Sprite->ShaderID));
+                    GL_Call(glUniformMatrix4fv(Sprite->UThrottleTransform, 1, 0, ThrottleWidgetTransform.e));
+                    GL_Call(glUniform2fv(Sprite->UWindowSize , 1, v2f32Init(g_Platform.WindowWidth,
+                                                                            g_Platform.WindowHeight).c));
+                    GL_Call(glUniform2fv(Sprite->UThrottlePos , 1, Entity->Pos.c));
+                    GL_Call(glUniform2fv(Sprite->UThrottleSize, 1, Entity->Dim.c));
+                    GL_Call(glUniform1f(Sprite->UThrottle, g_Platform.AppInput[0].DroneControls.NormalizedThrottle));
+                    GL_Call(glUniform1f(Sprite->UDeltaTime, AppState->DeltaTime));
                     
-                    /// EXTRA SHIT
-                    GL_Call(glUniform1f(sprite_render_info.uniform_throttle, g_Platform.AppInput[0].DroneControls.NormalizedThrottle));
-                    GL_Call(glUniform1f(DeltaTimeUniform, AppState->DeltaTime));
+                    GL_Call(glEnable(GL_BLEND));
+                    GL_Call(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
                     
-                    // Enables the alpha channel
-                    glEnable(GL_BLEND);
-                    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                    
-                    //glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-                    GL_Call(glBindVertexArray(sprite_render_info.vertex_attributes_id));
+                    GL_Call(glBindVertexArray(Sprite->VertexAttribID));
                     GL_Call(glDrawArrays(GL_TRIANGLES, 0, 6));
                     GL_Call(glBindVertexArray(0));
                 }
                 
+                u8 Message[] = "Hello World";
+                str8 TestString = str8Init(Message, sizeof(Message));
+                
+                RenderText(&AppState->GlyphHash,
+                           &OpenGLRenderer.Models[1],
+                           TestString,
+                           200, 299, 1, v3f32Init(1.0f, 1.0f, 0.0f));
                 
                 SwapBuffers(gl_device_context);
 #endif
-#ifdef RENDERER_D3D11
-                // TODO(MIGUEL): add d3d11 implementation
-#endif
                 
-                //~ TIMESTAMP
+                //~ DELAY
                 QueryPerformanceCounter(&end_frame_time_data);
                 
-                // NOTE(MIGUEL): Wait any time, if neccssary
-                // TODO(MIGUEL): think about changing target fps if current target is not met
                 {
                     s64 counts_in_frame = end_frame_time_data.QuadPart - begin_frame_time_data.QuadPart;
                     s64 counts_to_wait  = desired_frame_time_counts    - counts_in_frame;

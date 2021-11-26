@@ -12,7 +12,7 @@ F:\Dev\DroneController\lib\glad\src\glad.c
 rem ====================    COMPILER(MSVC)     ====================
 set MSVC_WARNINGS= -wd4700
 
-set MSVC_FLAGS= %MSVC_WARNINGS% -nologo -Zi -DRENDERER_OPENGL
+set MSVC_FLAGS= %MSVC_WARNINGS% -nologo -Zi
 
 set MSVC_SEARCH_DIRS= ^
 -I ..\lib\ ^

@@ -1,4 +1,5 @@
 #include "dc_opengl.h"
+#include "dc_memory.h"
 
 //~ PLATFORM INDEPENDENT
 // TODO(MIGUEL): Change GL_ to OpenGL_
@@ -55,11 +56,11 @@ void GL_ClearError(void)
     return;
 }
 
-void OpenGL_VertexBuffer_Create(u32 *vertex_buffer_id, f32 *vertices, u32 size)
+void OpenGL_CreateVertexBuffer(u32 *VertexBufferID, f32 *Vertices, u32 Size, GLenum DrawType)
 {
-    GL_Call(glGenBuffers(1, vertex_buffer_id));
-    GL_Call(glBindBuffer(GL_ARRAY_BUFFER, *vertex_buffer_id));
-    GL_Call(glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW));
+    GL_Call(glGenBuffers(1, VertexBufferID));
+    GL_Call(glBindBuffer(GL_ARRAY_BUFFER, *VertexBufferID));
+    GL_Call(glBufferData(GL_ARRAY_BUFFER, Size, Vertices, DrawType));
     
     return;
 }
@@ -113,6 +114,158 @@ void OpenGL_IndexBuffer_Bind(u32 index_buffer_id)
 void OpenGL_IndexBuffer_Unbind(void)
 {
     GL_Call(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+    
+    return;
+}
+
+void OpenGL_CreateShader(opengl_render_info *Info, u8 *Path, u32 PathSize)
+{
+    memset(&Info->CurrentShaderFileInfo, 0, sizeof(Info->CurrentShaderFileInfo));
+    
+    MemoryCopy(Path,
+               PathSize,
+               &Info->ShaderPath,
+               ARRAY_SIZE(Info->ShaderPath));
+    
+    FindFirstFileA(Info->ShaderPath,
+                   &Info->CurrentShaderFileInfo);
+    
+    
+    u8 InUseShaderPath[256];
+    MemoryCopy(&Info->ShaderPath,
+               ARRAY_SIZE(Info->ShaderPath),
+               InUseShaderPath,
+               ARRAY_SIZE(InUseShaderPath));
+    
+    // NOTE(MIGUEL): Update Extension
+    str8 A = str8Init(InUseShaderPath, PathSize);
+    str8 B = str8Init("_inuse_a.glsl"   , sizeof("_inuse_a.glsl"));
+    
+    str8RemoveFromEndToChar('.', &A);
+    str8AppendBtoA(&A, ARRAY_SIZE(InUseShaderPath), B);
+    
+    CopyFile(Info->ShaderPath,
+             InUseShaderPath, 0);
+    
+    size_t ShaderFileSize = ((Info->CurrentShaderFileInfo.nFileSizeHigh << 32) |
+                             (Info->CurrentShaderFileInfo.nFileSizeLow));
+    
+    Info->InUseShaderFileA = 0;
+    Info->InUseShaderFileB = 0;
+    
+    Info->InUseShaderFileA = CreateFileA(InUseShaderPath,
+                                         GENERIC_READ, 0, 0,
+                                         OPEN_EXISTING,
+                                         FILE_FLAG_DELETE_ON_CLOSE,
+                                         0);
+    ASSERT(Info->InUseShaderFileA);
+    
+    OpenGL_LoadShaderFromSource(&Info->ShaderID,
+                                Info->ShaderPath,
+                                Info->InUseShaderFileA, ShaderFileSize);
+    
+    return;
+}
+
+void OpenGL_HotSwapShader(opengl_render_info *Info)
+{
+    WIN32_FIND_DATAA UpdatedShaderFileInfo = {0};
+    
+    
+    FindFirstFileA(Info->ShaderPath,
+                   &UpdatedShaderFileInfo);
+    
+    if((UpdatedShaderFileInfo.ftLastWriteTime.dwLowDateTime !=
+        Info->CurrentShaderFileInfo.ftLastWriteTime.dwLowDateTime) ||
+       (UpdatedShaderFileInfo.ftLastWriteTime.dwHighDateTime !=
+        Info->CurrentShaderFileInfo.ftLastWriteTime.dwHighDateTime)) 
+    {
+        
+        u32 NewShader = 0;
+        
+        if(Info->InUseShaderFileA)
+        {
+            u8 InUseShaderPath[256];
+            MemoryCopy(&Info->ShaderPath,
+                       ARRAY_SIZE(Info->ShaderPath),
+                       InUseShaderPath,
+                       ARRAY_SIZE(InUseShaderPath));
+            
+            // NOTE(MIGUEL): Update Extension
+            str8 A = str8Init(InUseShaderPath, str8GetCStrLength(InUseShaderPath));
+            str8 B = str8Init("_inuse_b.glsl"   , sizeof("_inuse_b.glsl"));
+            
+            str8RemoveFromEndToChar('.', &A);
+            str8AppendBtoA(&A, ARRAY_SIZE(InUseShaderPath), B);
+            
+            
+            CopyFile(Info->ShaderPath,
+                     InUseShaderPath, 0);
+            
+            
+            size_t ShaderFileSize = ((UpdatedShaderFileInfo.nFileSizeHigh << 32) |
+                                     (UpdatedShaderFileInfo.nFileSizeLow));
+            
+            Info->InUseShaderFileB = CreateFileA(InUseShaderPath,
+                                                 GENERIC_READ, 0, 0,
+                                                 OPEN_EXISTING,
+                                                 FILE_FLAG_DELETE_ON_CLOSE,
+                                                 0);
+            
+            if(OpenGL_LoadShaderFromSource(&NewShader, InUseShaderPath,
+                                           Info->InUseShaderFileB, ShaderFileSize))
+            {
+                glDeleteShader(Info->ShaderID);
+                Info->ShaderID = NewShader;
+            }
+            
+            CloseHandle(Info->InUseShaderFileA);
+            Info->InUseShaderFileA = 0;
+            
+            Info->CurrentShaderFileInfo.ftLastWriteTime =
+                UpdatedShaderFileInfo.ftLastWriteTime;
+        }
+        else if(Info->InUseShaderFileB)
+        {
+            u8 InUseShaderPath[256];
+            MemoryCopy(&Info->ShaderPath,
+                       ARRAY_SIZE(Info->ShaderPath),
+                       InUseShaderPath,
+                       ARRAY_SIZE(InUseShaderPath));
+            
+            // NOTE(MIGUEL): Update Extension
+            str8 A = str8Init(InUseShaderPath, str8GetCStrLength(InUseShaderPath));
+            str8 B = str8Init("_inuse_a.glsl"   , sizeof("_inuse_a.glsl"));
+            
+            str8RemoveFromEndToChar('.', &A);
+            str8AppendBtoA(&A, ARRAY_SIZE(InUseShaderPath), B);
+            
+            
+            CopyFile(Info->ShaderPath,
+                     InUseShaderPath, 0);
+            
+            size_t ShaderFileSize = ((UpdatedShaderFileInfo.nFileSizeHigh << 32) |
+                                     (UpdatedShaderFileInfo.nFileSizeLow));
+            
+            Info->InUseShaderFileA = CreateFileA(InUseShaderPath,
+                                                 GENERIC_READ, 0, 0,
+                                                 OPEN_EXISTING,
+                                                 FILE_FLAG_DELETE_ON_CLOSE,
+                                                 0);
+            
+            if(OpenGL_LoadShaderFromSource(&NewShader, InUseShaderPath,
+                                           Info->InUseShaderFileA, ShaderFileSize))
+            {
+                glDeleteShader(Info->ShaderID);
+                Info->ShaderID = NewShader;
+            }
+            
+            CloseHandle(Info->InUseShaderFileB);
+            Info->InUseShaderFileB = 0;
+            
+            Info->CurrentShaderFileInfo.ftLastWriteTime = UpdatedShaderFileInfo.ftLastWriteTime;
+        }
+    }
     
     return;
 }
@@ -262,7 +415,6 @@ win32_Init_OpenGL(HDC real_dc)
 }
 
 #include "dc_fileio.h"
-#include "dc_renderer.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
 #include <stdlib.h>
@@ -415,11 +567,11 @@ OpenGL_LoadShaderFromSource(u32 *ShaderProgram, readonly u8 *path, HANDLE File, 
 }
 
 
-void OpenGL_LoadTexture(opengl_render_info *render_info, b32 should_flip )
+void OpenGL_LoadTexture(opengl_render_info *Info, b32 should_flip )
 {
     // THE AFFECTS OF THIS MIGHT NOT BE APPARENT UNSLESS THERE ARE CERTAIN CONDITIONS
-    GL_Call(glGenTextures(1, &render_info->texture));
-    GL_Call(glBindTexture(GL_TEXTURE_2D, render_info->texture));
+    GL_Call(glGenTextures(1, &Info->TextureID));
+    GL_Call(glBindTexture(GL_TEXTURE_2D, Info->TextureID));
     // CONFIGUE OPENGL WRAPPING OPTIONS
     GL_Call(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT));
     GL_Call(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT));

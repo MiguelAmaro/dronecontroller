@@ -2,6 +2,10 @@
 A windows application used to control and display debug info of a drone and
 it's flight controller.
 
+### General Win32
+https://github.com/grassator/win32-window-custom-titlebar
+
+
 ### Linear Algebra
 *Books:*
 *   The fundamentals of Computer Graphics
@@ -27,4 +31,6 @@ it's flight controller.
 
 
 *System Communication Resources:*
+*    https://en.wikipedia.org/wiki/Augmented_Backus%E2%80%93Naur_form
+*    https://en.wikipedia.org/wiki/Finite-state_machine
 *    https://docs.microsoft.com/en-us/windows/win32/devio/monitoring-communications-events                                                                                                                                                                                                         

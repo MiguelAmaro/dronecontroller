@@ -46,6 +46,35 @@ HGLRC win32_Init_OpenGL(HDC real_dc);
 b32 GL_Log(readonly u8 *file, readonly u32 line, readonly u8 *function);
 void GL_ClearError(void);
 
+
+typedef struct opengl_render_info opengl_render_info;
+struct opengl_render_info
+{
+    u32 VertexBufferID;
+    u32 VertexAttribID;
+    u32 IndexBufferID;
+    u32 ShaderID;
+    u32 TextureID;
+    
+    // Dynamic Shader Reload Data
+    HANDLE InUseShaderFileA;
+    HANDLE InUseShaderFileB;
+    WIN32_FIND_DATAA CurrentShaderFileInfo;
+    u8 ShaderPath[256];
+    
+    //Uniforms
+    u32 UModel;
+    u32 UThrottle;
+    u32 UProjection;
+    u32 UColor;
+    u32 UInput;
+    u32 UWindowSize       ;
+    u32 UDeltaTime        ;
+    u32 UThrottleSize     ;
+    u32 UThrottlePos      ;
+    u32 UThrottleTransform;
+};
+
 typedef struct opengl_renderer opengl_renderer;
 struct opengl_renderer
 {
@@ -53,22 +82,14 @@ struct opengl_renderer
     HGLRC RealContext;
     u32   CurrentWidth;
     u32   CurrentHeight;
-};
-
-typedef struct opengl_render_info opengl_render_info;
-struct opengl_render_info
-{
-    u32 vertex_buffer_id;
-    u32 vertex_attributes_id;
-    u32 index_buffer_id;
-    u32  shader;
-    u32  texture;
-    f32 *matrix_model;
-    u32  uniform_model;
-    u32  uniform_throttle;
-    u32  uniform_projection;
-    u32  uniform_color;
-    u32  uniform_input;
+    
+    //Uniforms
+    
+    /*
+    opengl_render_info Sprite;
+    opengl_render_info Glyph;
+    */
+    opengl_render_info Models[64];
 };
 
 #endif //FLIGHTCONTROL_OPENGL_H

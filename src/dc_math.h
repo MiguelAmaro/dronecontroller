@@ -3,6 +3,7 @@
 #ifndef DRONECONTROLLER_MATH_H
 #define DRONECONTROLLER_MATH_H
 
+#include "dc_types.h"
 
 typedef union v2f32 v2f32;
 union v2f32

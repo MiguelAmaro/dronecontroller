@@ -19,6 +19,8 @@ struct entity
     
     v2f32 Dim;
     v2f32 Pos;
+    
+    u32 RenderInfoID;
 };
 
 

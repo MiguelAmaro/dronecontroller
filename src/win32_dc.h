@@ -13,27 +13,27 @@ struct win32_thread_info
     HANDLE Handle;
 };
 
-typedef struct win32_state win32_state;
-struct win32_state
-{
-    size_t MainMemoryBlockSize;
-    u8     MainMemoryBlock;
-    
-    // TODO(MIGUEL): implement this
-    b32 InputPlayBackIndex;
-    b32 InputRecordIndex;
-    
-    win32_thread_info CommThreadInfo;
-};
-
-typedef struct win32_Backbuffer win32_Backbuffer;
-struct win32_Backbuffer
+typedef struct win32_backbuffer win32_backbuffer;
+struct win32_backbuffer
 {
     BITMAPINFO BitmapInfo;
     void *Data;
     u32 Width;
     u32 Height;
     u32 BytesPerPixel;
+};
+
+typedef struct win32_state win32_state;
+struct win32_state
+{
+    size_t  MainMemoryBlockSize;
+    void   *MainMemoryBlock;
+    
+    // TODO(MIGUEL): implement this
+    b32 InputPlayBackIndex;
+    b32 InputRecordIndex;
+    
+    win32_thread_info CommThreadInfo;
 };
 
 #endif //WIN32_DRONECONTROLLER_H

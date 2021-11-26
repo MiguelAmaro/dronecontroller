@@ -10,6 +10,9 @@ void main()
 {
     
     vec4 NewPos = Transform * vec4(vertex.xy, 0.0f, 1.0f);
+    // This is because my projection matix fuck with
+    // z values for some reason.
+    NewPos.z = 0.0f;
     TexCoords = vertex.zw;
     
     gl_Position = NewPos;
@@ -32,6 +35,6 @@ uniform vec3 TextColor;
 
 void main()
 {    
-    vec4 Sampled = vec4(1.0, 1.0, 1.0, texture(Text, TexCoords).r);
-    FragColor = vec4(TextColor, 1.0) * Sampled;
+    vec4 Sampled = vec4(1.0f, 1.0f, 1.0f, texture(Text, TexCoords).r);
+    FragColor = vec4(TextColor, 1.0f) * Sampled;
 }  
