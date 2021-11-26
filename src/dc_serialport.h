@@ -122,6 +122,9 @@ TelemetryEnqueuePacket(device *Device,
         ++*Count;
     }
     
+    ASSERT(*Count < MaxCount);
+    ASSERT(*Count >= 0);
+    
     return;
 }
 
@@ -145,6 +148,11 @@ TelemetryDequeuePacket(device *Device,
         *Head = ++*Head % MaxCount;
         --*Count;
     }
+    
+    
+    ASSERT(*Count < MaxCount);
+    ASSERT(*Count >= 0);
+    
     
     return Result;
 }

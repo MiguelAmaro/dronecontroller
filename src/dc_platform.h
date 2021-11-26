@@ -30,7 +30,7 @@ struct drone_controller_input
     v2f32 StickPos;
     f32   NormalizedThrottle;
 };
-
+// NOTE(MIGUEL): not ui .... ...
 typedef struct ui_controller_input ui_controller_input;
 struct ui_controller_input
 {

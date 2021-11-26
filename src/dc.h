@@ -5,8 +5,23 @@
 
 #include "dc_platform.h"
 #include "dc_entity.h"
+#include "dc_memory.h"
 
 #define ENTITY_MAX_COUNT 256
+#define UITEXT_MAX_COUNT 256
+
+typedef struct ui_text ui_text;
+struct ui_text
+{
+    u32 EntityID;
+    v3f32 Color;
+    
+    str8 String;
+    
+    v2f32 Pos;
+    
+    f32 Scale;
+};
 
 typedef struct glyph glyph;
 struct glyph
@@ -39,6 +54,13 @@ struct app_state
     
     entity Entities[ENTITY_MAX_COUNT];
     u32    EntityCount;
+    u32    EntityMaxCount;
+    
+    ui_text UIText[UITEXT_MAX_COUNT];
+    u32     UITextCount;
+    u32     UITextMaxCount;
+    
+    memory_arena UITextArena;
     
     glyph_hash GlyphHash;
     

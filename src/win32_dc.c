@@ -178,7 +178,7 @@ GlyphHashTableFill(app_state *AppState)
     return;
 }
 
-void RenderText(glyph_hash *GlyphHash, opengl_render_info *Info, str8 Text, f32 x, f32 y, f32 Scale, v3f32 Color)
+void RenderText(glyph_hash *GlyphHash, opengl_render_info *Info, str8 String, f32 x, f32 y, f32 Scale, v3f32 Color)
 {
     glEnable(GL_CULL_FACE);
     glEnable(GL_BLEND);
@@ -198,9 +198,9 @@ void RenderText(glyph_hash *GlyphHash, opengl_render_info *Info, str8 Text, f32 
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(Info->VertexAttribID);
     
-    for (u32 Index = 0; Index < Text.Count; Index++)
+    for (u32 Index = 0; Index < String.Count; Index++)
     {
-        u32 Char = Text.String[Index];
+        u32 Char = String.Data[Index];
         
         glyph Glyph = GlyphHashTableLookup(GlyphHash, Char);
         
@@ -792,12 +792,31 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                     telem_packet Packet = TelemetryDequeuePacket(&g_SerialPortDevice,
                                                                  Telem_QueueRecieve);
                     
+                    
+                    if(Packet.Header.PayloadSize == 0)
+                    {
+                        int dbgint = 13;
+                        dbgint = 1408;
+                    }
+                    
                     str8 TestString = str8Init(Packet.Payload, Packet.Header.PayloadSize);
+                    
+                    ASSERT(TestString.Count != 4294967295);
                     
                     RenderText(&AppState->GlyphHash,
                                &OpenGLRenderer.Models[1],
                                TestString,
                                200, 299, 1, v3f32Init(1.0f, 1.0f, 0.0f));
+                }
+                
+                
+                ui_text *UIText = AppState->UIText;
+                for(u32 UITextIndex = 0; UITextIndex < AppState->UITextCount; UITextIndex++, UIText++)
+                {
+                    RenderText(&AppState->GlyphHash,
+                               &OpenGLRenderer.Models[1],
+                               UIText->String,
+                               UIText->Pos.x, UIText->Pos.x, 1, UIText->Color);
                 }
                 
                 SwapBuffers(gl_device_context);
