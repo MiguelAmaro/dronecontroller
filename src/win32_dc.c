@@ -8,9 +8,9 @@
 #include "win32_dc.h"
 #include "win32_directinput.c"
 
+#include "dc_config.h"
 #include "dc.h"
 #include "dc_math.h"
-#include "dc_config.h"
 #include "dc_memory.h"
 #include "dc_opengl.h"
 #include "dc_platform.h"
@@ -237,44 +237,6 @@ void RenderText(glyph_hash *GlyphHash, opengl_render_info *Info, str8 Text, f32 
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-// NOTE(MIGUEL): Should i kill these 2 functions?????
-internaldef void 
-win32_UpdateWindow(HDC DeviceContext, u32 Width, u32 Height)
-{
-    StretchDIBits(DeviceContext,
-                  0, 0, g_BackBuffer.Width, g_BackBuffer.Height,
-                  0, 0, g_Platform.WindowWidth, g_Platform.WindowHeight,
-                  g_BackBuffer.Data,
-                  &g_BackBuffer.BitmapInfo,
-                  DIB_RGB_COLORS, SRCCOPY);
-    return;
-}
-
-internaldef void 
-win32_ResizeDIBSection(int Width, int Height)
-{
-    if(g_BackBuffer.Data)
-    {
-        VirtualFree(g_BackBuffer.Data, 0, MEM_RELEASE);
-    }
-    
-    g_BackBuffer.Width  = Width;
-    g_BackBuffer.Height = Height;
-    
-    g_BackBuffer.BitmapInfo.bmiHeader.biSize        = sizeof(g_BackBuffer.BitmapInfo.bmiHeader);
-    g_BackBuffer.BitmapInfo.bmiHeader.biWidth       =  g_BackBuffer.Width;
-    g_BackBuffer.BitmapInfo.bmiHeader.biHeight      = -g_BackBuffer.Height;
-    g_BackBuffer.BitmapInfo.bmiHeader.biPlanes      = 1;
-    g_BackBuffer.BitmapInfo.bmiHeader.biBitCount    = 32;
-    g_BackBuffer.BitmapInfo.bmiHeader.biCompression = BI_RGB;
-    
-    
-    u32 BitmapMemorySize = (Width * Height) * g_BackBuffer.BytesPerPixel;
-    g_BackBuffer.Data = VirtualAlloc(0, BitmapMemorySize, MEM_COMMIT,PAGE_READWRITE);
-    
-    return;
-}
-
 LRESULT CALLBACK 
 win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l_param) {
     LRESULT Result = 0;
@@ -288,68 +250,44 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
         case WM_SIZE:
         {
             RECT ClientRect;
-            GetClientRect(Window, &ClientRect); //Get RECT of window excludes borders
+            GetClientRect(Window, &ClientRect);
             HDC DeviceContext = GetDC(Window);
             g_Platform.WindowWidth  = ClientRect.right  - ClientRect.left;
             g_Platform.WindowHeight = ClientRect.bottom - ClientRect.top ;
-            win32_ResizeDIBSection(g_Platform.WindowWidth, g_Platform.WindowHeight);
-            win32_UpdateWindow(DeviceContext, g_Platform.WindowWidth, g_Platform.WindowHeight);
-        }
-        break;
+        } break;
+        
         case WM_CLOSE:
         {
             g_Platform.QuitApp = true;
-        }
-        break;
+        } break;
+        
         case WM_ACTIVATEAPP:
         {
             OutputDebugStringA("WM_ACTIVATEAPP\n");
-        }
-        break;
+        } break;
+        
         case WM_DESTROY:
         {
             g_Platform.QuitApp = true;
-        }
-        break;
+        } break;
+        
         case WM_PAINT:
         {
-            // NOTE(MIGUEL): WILL PAINT WITH OPEN GL NOT WINDOWS???
             PAINTSTRUCT Paint;
             HDC DeviceContext = BeginPaint(Window, &Paint);
-            RECT ClientRect;
-            GetClientRect(Window, &ClientRect); //Get RECT of window excludes borders
             
+            RECT ClientRect;
+            GetClientRect(Window, &ClientRect);
             g_Platform.WindowWidth  = ClientRect.right  - ClientRect.left;
             g_Platform.WindowHeight = ClientRect.bottom - ClientRect.top ;
-            
-            win32_UpdateWindow(DeviceContext, g_Platform.WindowWidth, g_Platform.WindowHeight);
             EndPaint(Window, &Paint);
-        }
-        break;
+        } break;
         
-        // TODO(MIGUEL): Add code for WM_KEYUP
-#if 0
-        case WM_KEYUP:
-        {
-            key_down = Message == WM_KEYDOWN;
-            key_code = w_param;
-            key_index = 0;
-            
-            if(key_code >= 'A' && key_code <= 'Z')
-            { 
-                key_index = KEY_a + (key_code - 'A');
-            }
-            
-            g_Platform.AppInput[0].KeyDown[key_index] = key_down;
-        }
-#endif
         default:
         {
-            
             OutputDebugStringA("Default\n");
             Result = DefWindowProc(Window, Message, w_param, l_param);
-        }
-        break;
+        } break;
     }
     
     return(Result);
@@ -765,8 +703,16 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 if(g_SerialPortDevice.Connected)
                 {
-                    u8 ThrottleValue = 255.0f * (g_Platform.AppInput[0].DroneControls.NormalizedThrottle);
-                    win32_SerialPort_SendData(&g_SerialPortDevice, &ThrottleValue, sizeof(u8));
+                    f32 ThrottleValue = g_Platform.AppInput[0].DroneControls.NormalizedThrottle;
+                    
+                    telem_packet Packet = { 0 };
+                    Packet.Header.Info = (u8)((Telem_Data << 6) |
+                                              (Telem_f32  << 3)); 
+                    
+                    MemoryCopy((u8 *)&ThrottleValue, sizeof(f32),
+                               Packet.Payload, 256);
+                    
+                    win32_SerialPort_SendData(&g_SerialPortDevice, Packet);
                 }
                 else
                 {
@@ -841,13 +787,18 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                     GL_Call(glBindVertexArray(0));
                 }
                 
-                u8 Message[] = "Hello World";
-                str8 TestString = str8Init(Message, sizeof(Message));
-                
-                RenderText(&AppState->GlyphHash,
-                           &OpenGLRenderer.Models[1],
-                           TestString,
-                           200, 299, 1, v3f32Init(1.0f, 1.0f, 0.0f));
+                if(g_SerialPortDevice.Connected)
+                {
+                    telem_packet Packet = TelemetryDequeuePacket(&g_SerialPortDevice,
+                                                                 Telem_QueueRecieve);
+                    
+                    str8 TestString = str8Init(Packet.Payload, Packet.Header.PayloadSize);
+                    
+                    RenderText(&AppState->GlyphHash,
+                               &OpenGLRenderer.Models[1],
+                               TestString,
+                               200, 299, 1, v3f32Init(1.0f, 1.0f, 0.0f));
+                }
                 
                 SwapBuffers(gl_device_context);
 #endif

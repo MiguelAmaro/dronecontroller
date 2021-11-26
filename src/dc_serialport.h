@@ -2,6 +2,23 @@
 
 #define DEVICE_QUEUE_SIZE 256
 
+// 2 Byte header
+// payload
+
+typedef struct telem_packet_header telem_packet_header;
+struct telem_packet_header
+{
+    u8 Info;
+    u8 PayloadSize;
+};
+
+
+typedef struct telem_packet telem_packet;
+struct telem_packet
+{
+    telem_packet_header Header;
+    u8                  Payload[256];
+};
 
 // TODO(MIGUEL): bits[2]
 typedef enum telem_type telem_type;
@@ -31,27 +48,27 @@ enum telem_state
     Telem_Ack
 };
 
+typedef enum telem_queue telem_queue;
+enum telem_queue
+{
+    Telem_QueueRecieve  = 0,
+    Telem_QueueTransmit = 1,
+};
 
 typedef struct device device;
 struct device
 {
     HANDLE StreamHandle;
-    OVERLAPPED Overlapped;
-    b32 Connected;
-    u8  TransmitQueue[DEVICE_QUEUE_SIZE];
-    u8  TransmitQueueSize ;
-    u8  RecieveQueue [DEVICE_QUEUE_SIZE];
-    u8  RecieveQueueSize  ;
+    b32    Connected;
+    
+    telem_packet PacketQueue[2][DEVICE_QUEUE_SIZE];
+    u32          PacketQueueMaxCount [2];
+    u32          PacketQueueCount    [2];
+    u32          PacketQueueHead     [2]; 
+    u32          PacketQueueTail     [2]; 
+    
     u16 padding;
 };
-
-internaldef void
-DebugPrint()
-{
-    
-    
-    return;
-}
 
 global device g_SerialPortDevice = {0}; 
 
@@ -86,7 +103,51 @@ PRINTF_BINARY_PATTERN_INT32             PRINTF_BINARY_PATTERN_INT32
 PRINTF_BYTE_TO_BINARY_INT32((i) >> 32), PRINTF_BYTE_TO_BINARY_INT32(i)
 /* --- end macros --- */
 
+internaldef void
+TelemetryEnqueuePacket(device *Device,
+                       telem_queue Direction,
+                       telem_packet Packet)
+{
+    telem_packet *Queue = Device->PacketQueue         [Direction];
+    u32        MaxCount =  Device->PacketQueueMaxCount[Direction];
+    u32          *Count = &Device->PacketQueueCount   [Direction];
+    u32           *Tail = &Device->PacketQueueTail    [Direction]; 
+    
+    if(*Count < MaxCount)
+    {
+        telem_packet *Entry = &Queue[*Tail];
+        *Entry = Packet;
+        
+        *Tail = ++*Tail % MaxCount;
+        ++*Count;
+    }
+    
+    return;
+}
 
+internaldef telem_packet
+TelemetryDequeuePacket(device *Device,
+                       telem_queue Direction)
+{
+    
+    telem_packet Result = { 0 };
+    
+    telem_packet *Queue = Device->PacketQueue         [Direction];
+    u32        MaxCount =  Device->PacketQueueMaxCount[Direction];
+    u32          *Count = &Device->PacketQueueCount   [Direction];
+    u32           *Head = &Device->PacketQueueHead    [Direction]; 
+    
+    if(*Count > 0)
+    {
+        telem_packet *Entry = &Queue[*Head];
+        Result = *Entry;
+        
+        *Head = ++*Head % MaxCount;
+        --*Count;
+    }
+    
+    return Result;
+}
 
 void
 win32_SerialPort_CloseDevice(device *Device, win32_state *Win32State)
@@ -100,100 +161,47 @@ win32_SerialPort_CloseDevice(device *Device, win32_state *Win32State)
     
     return;
 }
-
+#define TELEM_PACKET_HEADER_SIZE 2
 
 void
 win32_SerialPort_RecieveData(device *Device)
 {
+    telem_packet TelemetryPacket = { 0 };
     
-    /*u8 *StringToPrint = (u8 *)lpParameter;
-            
-            OutputDebugStringA(StringToPrint);
-            // Reading
-            */
-    u8 TempByte = 0;
-    DWORD BytesToRead;
-    b32 ReceptionSuccessful = 0;
+    DWORD BytesToRead = 0;
+    DWORD BytesRead   = 0;
+    b32   ReceptionSuccessful = 0;
     
-    memset(Device->RecieveQueue, 0, Device->RecieveQueueSize);
+    BytesToRead = TELEM_PACKET_HEADER_SIZE;
+    ReceptionSuccessful = ReadFile(Device->StreamHandle,
+                                   &TelemetryPacket.Header,
+                                   BytesToRead,
+                                   &BytesRead,
+                                   NULL);
     
-    int i = 0;
-    
-    DWORD Event;
-    {
-        /*
-        if(WaitCommEvent(Device->StreamHandle, &Event, &Device->Overlapped))
-        if(Event & EV_DSR)
-        {
-            printf("dsr !!!");
-        }
-            */
-        ReceptionSuccessful = ReadFile(Device->StreamHandle, //Handle of the Serial port
-                                       &TempByte          ,
-                                       sizeof(TempByte)   ,
-                                       &BytesToRead       ,
-                                       NULL);
+    if(!ReceptionSuccessful)
+    { 
+        Device->Connected = 0;
         
-        
-        if(!ReceptionSuccessful)
-        {
-            Device->Connected = 0;
-            //break;
-        }
-        //000 0111
-        u32 TelemetryMsgType     = (TempByte >> 6) & 0x2;
-        u32 TelemetryMsgDataType = (TempByte >> 3) & 0x7;
-        
-        u32 TelemetryMsgBytesToRead = (u8)TempByte;
-        printf("Telemetry Data count: %d \n", TelemetryMsgBytesToRead);
-        ReceptionSuccessful = ReadFile(Device->StreamHandle, //Handle of the Serial port
-                                       &TempByte          ,
-                                       sizeof(TempByte)   ,
-                                       &BytesToRead       ,
-                                       NULL);
-        
-        u8 *Dest = Device->RecieveQueue;
-        for(u32 Byte = 0; Byte < TelemetryMsgBytesToRead; Byte++)
-        {
-            ReadFile(Device->StreamHandle, //Handle of the Serial port
-                     Dest++             ,
-                     sizeof(TempByte)   ,
-                     &BytesToRead       ,
-                     NULL);
-            
-        }
-        
-        printf("%s", Device->RecieveQueue);
-        
-        printf(PRINTF_BINARY_PATTERN_INT8"\n", PRINTF_BYTE_TO_BINARY_INT8(TempByte));
-        switch(TelemetryMsgType)
-        {
-            case Telem_Data:
-            {
-                printf("Telemetry Data Message Recieved\n");
-            } break;
-            
-            case Telem_Status:
-            {
-                printf("Telemetry Status Message Recieved\n");
-            } break;
-        }
-        
-        switch(TelemetryMsgDataType)
-        {
-            case Telem_str8:
-            {
-                printf("Telemetry Data is String8 \n");
-            } break;
-            
-            case Telem_u8:
-            {
-                printf("Telemetry Data is String 8\n");
-            } break;
-            
-        }
+        return;
     }
     
+    u8 Buffer[256] = { 0 };
+    BytesRead   = 0;
+    BytesToRead = TelemetryPacket.Header.PayloadSize;
+    
+    ReadFile(Device->StreamHandle,
+             Buffer,
+             BytesToRead,
+             &BytesRead,
+             NULL);
+    
+    if(BytesRead == TelemetryPacket.Header.PayloadSize)
+    {
+        MemoryCopy(Buffer, 256, TelemetryPacket.Payload, 256);
+        
+        TelemetryEnqueuePacket(Device, Telem_QueueRecieve, TelemetryPacket);
+    }
     
     return;
 }
@@ -242,7 +250,7 @@ win32_SerialPort_InitDevice(win32_state *Win32State, device *Device)
     COMMTIMEOUTS TimeoutsComm                = { 0 };
     TimeoutsComm.ReadIntervalTimeout         = 1; // in milliseconds
     TimeoutsComm.ReadTotalTimeoutConstant    = 1; // in milliseconds
-    TimeoutsComm.ReadTotalTimeoutMultiplier  = 1; // in milliseconds
+    TimeoutsComm.ReadTotalTimeoutMultiplier  = MAXDWORD; // in milliseconds
     TimeoutsComm.WriteTotalTimeoutConstant   = 1; // in milliseconds
     TimeoutsComm.WriteTotalTimeoutMultiplier = 1; // in milliseconds
     
@@ -253,24 +261,17 @@ win32_SerialPort_InitDevice(win32_state *Win32State, device *Device)
     { return 0; }
     if(!WaitCommEvent(Device->StreamHandle, &Event, NULL))
     { return 0; }
-    /*
-    SetCommMask(Device->StreamHandle, EV_DSR | EV_CTS);
-    
-    Device->Overlapped.Internal     = 0;
-    Device->Overlapped.InternalHigh = 0;
-    Device->Overlapped.Offset       = 0;
-    Device->Overlapped.OffsetHigh   = 0;
-    Device->Overlapped.hEvent       = 0;
-    
-    Device->Overlapped.hEvent = CreateEvent(NULL,   // default security attributes 
-                                            TRUE,   // manual-reset event 
-                                            FALSE,  // not signaled 
-                                            NULL);  // no name
-    */
     
     Device->Connected = 1;
-    Device->TransmitQueueSize = DEVICE_QUEUE_SIZE;
-    Device->RecieveQueueSize  = DEVICE_QUEUE_SIZE;
+    Device->PacketQueueHead    [0] = 0;
+    Device->PacketQueueTail    [0] = 0;
+    Device->PacketQueueCount   [0] = 0;
+    Device->PacketQueueMaxCount[0] = DEVICE_QUEUE_SIZE;
+    
+    Device->PacketQueueHead    [1] = 0;
+    Device->PacketQueueTail    [1] = 0;
+    Device->PacketQueueCount   [1] = 0;
+    Device->PacketQueueMaxCount[1] = DEVICE_QUEUE_SIZE;
     
 #if 0
     u8 *Param = "Thread Started !!!\n\r";
@@ -287,15 +288,15 @@ win32_SerialPort_InitDevice(win32_state *Win32State, device *Device)
 }
 
 void
-win32_SerialPort_SendData(device *Device, u8 *Bytes, u32 Size)
+win32_SerialPort_SendData(device *Device, telem_packet Packet)
 {
     
     u32 BytesWritten = 0;
     b32 TransmissionSuccessful = 0;
     
-    TransmissionSuccessful = WriteFile(Device->StreamHandle    , // Handle to the Serial port
-                                       Bytes                   , // Data to be written to the port
-                                       Size                    , // Number of bytes to write
+    TransmissionSuccessful = WriteFile(Device->StreamHandle, // Handle to the Serial port
+                                       &Packet, // Data to be written to the port
+                                       sizeof(Packet), // Number of bytes to write
                                        &BytesWritten           , // Bytes written
                                        NULLPTR)                ;
     

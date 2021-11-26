@@ -73,8 +73,6 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
             Entity->Pos.y  = Platform->WindowHeight / 2.0f;
         }
         
-        AppState->Throttle = 255.0f * (Platform->AppInput[0].DroneControls.NormalizedThrottle);
-        
         entity *Entity = AppState->Entities;
         for(u32 EntityIndex = 0; EntityIndex < AppState->EntityCount; EntityIndex++, Entity++)
         {

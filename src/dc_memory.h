@@ -31,6 +31,22 @@ void MemoryCopy(void *SrcBuffer, u32 SrcSize,
 }
 
 internaldef
+void MemorySet(void *SrcBuffer, u32 SrcSize, u32 Value)
+{
+    
+    u8* Src = (u8 *)SrcBuffer;
+    
+    for(u32 Index = 0;
+        Index < SrcSize;
+        Index++, Src++)
+    {
+        *Src = Value;
+    }
+    
+    return;
+}
+
+internaldef
 str8 str8Init(u8 *String, u32 Count)
 {
     str8 Result = { 0 };
