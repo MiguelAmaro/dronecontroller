@@ -9,31 +9,49 @@
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 #include "dc_math.h"
 
-// NOTE(MIGUEL): This is an Xmacro. Do some research on this
-enum {
-#define key(name, str) KEY_##name,
-#include "Platform_Key_List.inc"
-    KEY_MAX
+#if 0
+#define PLATFORM_FREE_FILE_MEMORY(name) void name(ThreadContext *thread, void *memory)
+typedef PLATFORM_FREE_FILE_MEMORY(platform_free_file_memory);
+
+#define DEBUG_PLATFORM_READ_ENTIRE_FILE(name) DebugReadFileResult name(ThreadContext *thread, u8 *file_name)
+typedef DEBUG_PLATFORM_READ_ENTIRE_FILE(DEBUG_PlatformReadEntireFile);
+
+#define PLATFORM_SET_CAPTURE(name) void name(b32 Capture)
+typedef PLATFORM_SET_CAPTURE(platform_set_capture);
+
+typedef struct platform_api platform_api;
+struct platform_api
+{
+    platform_set_capture *PlatformCaputure;
+    
+};
+#endif
+
+typedef enum platfrom_key platfrom_key;
+enum platfrom_key
+{
+    Key_NULL,
+    Key_a, Key_b, Key_c, Key_d,
+    Key_e, Key_f, Key_g, Key_h,
+    Key_i, Key_j, Key_k, Key_l,
+    Key_m, Key_n, Key_o, Key_p,
+    Key_q, Key_r, Key_s, Key_t,
+    Key_u, Key_v, Key_w, Key_x,
+    Key_y, Key_z,
+    Key_MAX
 };
 
-
-typedef struct app_button_state app_button_state;
-struct app_button_state
+typedef struct input_button_state input_button_state;
+struct input_button_state
 {
     u32 HalfTransitionCount; // button half transition
     b32 EndedDown;
 };
 
-typedef struct drone_controller_input drone_controller_input;
-struct drone_controller_input
+typedef struct input_src input_src;
+struct input_src
 {
-    v2f32 StickPos;
-    f32   NormalizedThrottle;
-};
-// NOTE(MIGUEL): not ui .... ...
-typedef struct ui_controller_input ui_controller_input;
-struct ui_controller_input
-{
+    // UI Oriented
     v2f32 MousePos;
     
     b32 MouseLeftButtonDown;
@@ -41,16 +59,12 @@ struct ui_controller_input
     b32 MouseRightButtonDown;
     b32 MouseRightButtonPressed;
     
-    // NOTE(MIGUEL): maybe some of the keys map to something that can control the drone
-    b32 KeyDown[KEY_MAX];
-};
-
-
-typedef struct app_input app_input;
-struct app_input
-{
-    ui_controller_input    UIControls;
-    drone_controller_input DroneControls;
+    input_button_state AlphaKeys[Key_MAX];
+    input_button_state   NavKeys[6];
+    
+    // Drone Oriented
+    v2f32 StickPos;
+    f32   NormThrottlePos;
 };
 
 
@@ -67,7 +81,7 @@ struct platform
     u32   TransientStorageSize;
     
     /// INPUT
-    app_input AppInput[1]; // Allowable controllers xbox360, trustermaster, keyboard
+    input_src Controls[1]; // Allowable controllers xbox360, trustermaster, keyboard
     
     f32 TargetSecondsPerFrame;
     
@@ -79,6 +93,8 @@ struct platform
     // TIME
     f32 CurrentTime;
     f32 LastTime;
+    
+    //platform_api API;
 };
 
 

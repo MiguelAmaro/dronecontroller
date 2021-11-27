@@ -26,6 +26,8 @@ struct win32_backbuffer
 typedef struct win32_state win32_state;
 struct win32_state
 {
+    HWND Window;
+    
     size_t  MainMemoryBlockSize;
     void   *MainMemoryBlock;
     

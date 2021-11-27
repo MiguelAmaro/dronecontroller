@@ -84,11 +84,6 @@ struct opengl_renderer
     u32   CurrentHeight;
     
     //Uniforms
-    
-    /*
-    opengl_render_info Sprite;
-    opengl_render_info Glyph;
-    */
     opengl_render_info Models[64];
 };
 

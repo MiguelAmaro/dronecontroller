@@ -15,10 +15,14 @@ enum entity_type
 typedef struct entity entity;
 struct entity
 {
+    u32 Index;
+    
     entity_type Type;
     
     v2f32 Dim;
     v2f32 Pos;
+    
+    u8 HotAlpha;
     
     u32 RenderInfoID;
 };

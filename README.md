@@ -1,5 +1,5 @@
 # Drone Controller
-A windows application used to control and display debug info of a drone and
+A windows applicatnion used to control and display debug info of a drone and
 it's flight controller.
 
 ### General Win32
@@ -27,7 +27,11 @@ https://github.com/grassator/win32-window-custom-titlebar
 *Graphics Resources:*
 *    http://www.songho.ca/opengl/gl_transform.html 
 *    http://davidlively.com/programming/graphics/opengl-matrices/row-major-vs-column-major/   
-*    http://www.songho.ca/opengl/gl_matrix.html                                                                                                 
+*     http://www.songho.ca/opengl/gl_matrix.html                                                                               
+
+*IMGui*
+*    http://silverspaceship.com/inner/imgui/
+*    https://www.youtube.com/watch?v=Z1qyvQsjK5Y          
 
 
 *System Communication Resources:*

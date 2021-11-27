@@ -202,8 +202,8 @@ HRESULT win32_DirectInputProcessFlightStickInput(controller *Controller, platfor
         return Result; // The Device should have been acquired during the Poll()
     }
     
-    Platform->AppInput->DroneControls.StickPos.x = JoystickState.lX;
-    Platform->AppInput->DroneControls.StickPos.y = JoystickState.lY;
+    Platform->Controls->StickPos.x = JoystickState.lX;
+    Platform->Controls->StickPos.y = JoystickState.lY;
     
     return S_OK;
 }
@@ -246,7 +246,7 @@ HRESULT win32_DirectInputProcessThrottleInput(controller *Controller, platform *
         return result; // The device should have been acquired during the Poll()
     }
     
-    Platform->AppInput->DroneControls.NormalizedThrottle = (1.0f - (f32)joystick_state.lZ / (f32)65535.0f);
+    Platform->Controls->NormThrottlePos = (1.0f - (f32)joystick_state.lZ / (f32)65535.0f);
     
     return S_OK;
 }

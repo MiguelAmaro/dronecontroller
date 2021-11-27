@@ -19,30 +19,25 @@
 #include <GL/gl.h>
 #include <WGL/wglext.h>
 
-//#include "fast_pipe.h" // TODO(MIGUEL): get rid of this file
-//#include <io.h>
-//#include <stdio.h>
-//#include <fcntl.h>
-//#include <string.h>
-//#include <d3d11.h>
-//#include <Winsock2.h>
-//#include <Ws2tcpip.h>
-//#include <strsafe.h>
-//#include <conio.h>
-
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-global platform    g_Platform   = {0};
-global win32_state g_Win32State = {0};
+global opengl_renderer  OpenGLRenderer = { 0 };
+
+global platform         g_Platform   = {0};
+global win32_state      g_Win32State = {0};
 global win32_backbuffer g_BackBuffer = {0};
 
-typedef struct string8 string8;
-struct string8
+// NOTE(MIGUEL): Not sure if this is needed
+#if 0
+PLATFORM_SET_CAPTURE(PlatformSetCapture)
 {
-    u8 *Data;
-    u32 Size;
-};
+    if(Capture) SetCapture(g_Win32State.Window);
+    else        ReleaseCapture();
+    
+    return;
+}
+#endif
 
 internaldef void
 GlyphHashTableInit(app_state *AppState)
@@ -294,7 +289,7 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
 }
 
 internaldef void
-win32_ProcessKeyboardMessage(app_button_state *NewState, b32 IsDown)
+win32_ProcessKeyboardMessage(input_button_state *NewState, b32 IsDown)
 {
     if(NewState->EndedDown != IsDown)
     {
@@ -306,188 +301,127 @@ win32_ProcessKeyboardMessage(app_button_state *NewState, b32 IsDown)
 }
 
 internaldef void
-win32_ProcessPendingMessages(win32_state *State, app_input *Keyboard)
+win32_ProcessPendingMessages(win32_state *State, input_src *Keyboard)
 {
-    MSG message;
+    MSG Message;
     
-    u32 key_code  =     0;
-    u32 key_index =     0;
-    b32 key_down  = false; 
+    u32 KeyCode       = 0;
+    u32 KeyIndex      = 0;
+    b32 KeyIsDown     = 0; 
+    b32 KeyWasDown    = 0; 
+    b32 KeyAltWasDown = 0;
     
-    while(PeekMessage(&message, 0, 0, 0, PM_REMOVE))
+    while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
     {
-        switch(message.message)
+        switch(Message.message)
         {
             case WM_QUIT:
             {
                 g_Platform.QuitApp = true;
             }  break;
             
-            case WM_SYSKEYUP:
-            
-            case WM_SYSKEYDOWN:
-            
-            case WM_MOUSEMOVE:
+            case WM_MOUSEMOVE :
             {
-                g_Platform.AppInput[0].UIControls.MousePos.x = (message.lParam & 0x0000FFFF);
-                g_Platform.AppInput[0].UIControls.MousePos.y = ((message.lParam & 0xFFFF0000) >> 16);
+                g_Platform.Controls->MousePos.x = ((Message.lParam & 0x0000FFFF));
+                g_Platform.Controls->MousePos.y = ((Message.lParam & 0xFFFF0000) >> 16);
             } break;
             
-            case WM_LBUTTONDOWN:
-            {
-                g_Platform.AppInput[0].UIControls.MouseLeftButtonDown = 1;
-            } break;
-            
-            case WM_LBUTTONUP:
-            {
-                g_Platform.AppInput[0].UIControls.MouseLeftButtonDown = 0;
-            } break;
-            
+            case WM_LBUTTONDOWN: g_Platform.Controls->MouseLeftButtonDown = 1; break;
+            case WM_LBUTTONUP  : g_Platform.Controls->MouseLeftButtonDown = 0; break;
             case WM_RBUTTONDOWN:
-            
-            case WM_RBUTTONUP:
-            
+            case WM_RBUTTONUP  :
             case WM_MOUSEHWHEEL:
             
-            case WM_KEYDOWN:
-            
-            case WM_KEYUP:
+            case WM_SYSKEYDOWN:
+            case WM_SYSKEYUP  :
+            case WM_KEYDOWN   :
+            case WM_KEYUP     :
             {
-                key_down = message.message == WM_KEYDOWN;
-                key_code = message.wParam;
-                key_index = 0;
+                KeyIndex  = 0;
                 
-                if(key_code >= 'A' && key_code <= 'Z')
-                { 
-                    key_index = KEY_a + (key_code - 'A');
-                }
-                Keyboard->UIControls.KeyDown[key_index] = key_down;
-            } break;
-#if 0
-            {
-                u32 vk_code          = (u32)message.wParam;
-                b32 was_down         = ((message.lParam & (1 << 30)) != 0);
-                b32 is_down          = ((message.lParam & (1 << 31)) == 0);
+                KeyCode       = (u32)Message.wParam;
+                KeyIsDown     = ((Message.lParam & (1 << 30)) != 0);
+                KeyWasDown    = ((Message.lParam & (1 << 30)) != 0);
+                KeyAltWasDown = ( Message.lParam & (1 << 29));
                 
-                if(was_down != is_down)
+                if(KeyWasDown != KeyIsDown)
                 {
-                    if     (vk_code == 'W')
-                    {
-                        //MoveUp
-                        win32_ProcessKeyboardMessage(&keyboard->button_y, is_down);
-                    }
-                    else if(vk_code == 'A')
-                    {
-                        //MoveLeft
-                        win32_ProcessKeyboardMessage(&keyboard->button_x, is_down);
-                    }
-                    else if(vk_code == 'S')
-                    {
-                        //MoveDown
-                        win32_ProcessKeyboardMessage(&keyboard->button_a, is_down);
-                    }
-                    else if(vk_code == 'D')
-                    {
-                        //MoveRight
-                        win32_ProcessKeyboardMessage(&keyboard->button_b, is_down);
+                    
+                    if(KeyCode >= 'A' && KeyCode <= 'Z')
+                    { 
+                        KeyIndex = Key_a + (KeyCode - 'A');
+                        win32_ProcessKeyboardMessage(&Keyboard->AlphaKeys[KeyIndex], KeyIsDown);
                     }
                     
-                    else if(vk_code == 'Q')
+                    switch(KeyCode)
                     {
-                        win32_ProcessKeyboardMessage(&keyboard->shoulder_left, is_down);
-                    }
-                    else if(vk_code == 'E')
-                    {
-                        win32_ProcessKeyboardMessage(&keyboard->shoulder_left, is_down);
-                    }
-                    else if(vk_code == VK_UP)
-                    {
-                        win32_ProcessKeyboardMessage(&keyboard->action_up, is_down);
-                    }
-                    else if(vk_code == VK_LEFT)
-                    {
-                        win32_ProcessKeyboardMessage(&keyboard->action_left, is_down);
-                    }
-                    else if(vk_code == VK_DOWN)
-                    {
-                        win32_ProcessKeyboardMessage(&keyboard->action_down, is_down);
-                    }
-                    else if(vk_code == VK_RIGHT)
-                    {
-                        win32_ProcessKeyboardMessage(&keyboard->action_right, is_down);
-                    }
-                    else if(vk_code == VK_ESCAPE)
-                    {
-                        win32_ProcessKeyboardMessage(&keyboard->button_back, is_down);
-                    }
-                    else if(vk_code == VK_SPACE) 
-                    {
-                        win32_ProcessKeyboardMessage(&keyboard->button_start, is_down);
-                    }
-#if SGE_INTERNAL
-                    if(vk_code == 'P')
-                    {
-                        if(is_down)
-                        {
-                            g_pause= !g_pause;
-                        }
-                    }
-                    //~ Extra:Live Loop Stuff
-                    if(vk_code == 'L')
-                    {
-                        if(is_down)
-                        {
-                            if(state->input_playback_index == 0)
-                            {
-                                
-                                if(state->input_record_index == 0)
-                                {
-                                    win32_input_begin_recording(state, 1);
-                                }
-                                else
-                                {
-                                    win32_input_end_recording (state  );
-                                    win32_input_begin_playback(state, 1);
-                                }
-                            }
-                            else
-                            {
-                                win32_input_end_playback(state);
-                            }
-                        }
-                    }
-                    
-#endif
-                    if(is_down)
-                    {
-                        
-                        b32 alt_key_was_down = ( message.lParam & (1 << 29));
-                        if((vk_code == VK_F4) && alt_key_was_down)
-                        {
-                            g_Platform.quit = true;
-                        }
-                        if((vk_code == VK_RETURN) && alt_key_was_down)
-                        {
-                            if(message.hwnd)
-                            {
-                                win32_toggle_fullscreen(message.hwnd );
-                            }
-                        }
+                        case VK_UP    : win32_ProcessKeyboardMessage(&Keyboard->NavKeys[0], KeyIsDown); break;
+                        case VK_LEFT  : win32_ProcessKeyboardMessage(&Keyboard->NavKeys[1], KeyIsDown); break;
+                        case VK_DOWN  : win32_ProcessKeyboardMessage(&Keyboard->NavKeys[2], KeyIsDown); break;
+                        case VK_RIGHT : win32_ProcessKeyboardMessage(&Keyboard->NavKeys[3], KeyIsDown); break;
+                        case VK_ESCAPE: win32_ProcessKeyboardMessage(&Keyboard->NavKeys[4], KeyIsDown); break;
+                        case VK_SPACE : win32_ProcessKeyboardMessage(&Keyboard->NavKeys[5], KeyIsDown); break;
+                        case VK_F4    : g_Platform.QuitApp = KeyAltWasDown ? 1 : 0; break;
                     }
                 }
+                
+                if((KeyCode == VK_RETURN) && (KeyAltWasDown) && Message.hwnd)
+                {
+                    //win32_toggle_fullscreen(Message.hwnd );
+                }
+                
+                if((KeyCode == 'P') && (KeyIsDown))
+                {
+                    //g_Pause= !g_Pause;
+                }
+                
             } break;
-#endif
             
             default:
             {
-                TranslateMessage(&message);
-                DispatchMessageA(&message);
+                TranslateMessage(&Message);
+                DispatchMessageA(&Message);
             } break;
         }
     }
     
     return;
 }
+
+void
+RenderRect(opengl_render_info *Info, v2f32 Pos, v2f32 Dim, f32 DeltaTime)
+{
+    m4f32 WidgetProjection = m4f32Orthographic(0.0f, g_Platform.WindowWidth,
+                                               0.0f, g_Platform.WindowHeight,
+                                               0.1f, 100.0f);
+    
+    m4f32 WidgetTransform = m4f32Identity();
+    m4f32 Trans           = m4f32Translate(v3f32Init(Pos.x, Pos.y, 0.0f));
+    m4f32 Scale           = m4f32Scale(Dim.x / 2.0f, Dim.y / 2.0f, 1.0f);
+    m4f32 Rotate          = m4f32Identity();
+    
+    m4f32 World     = m4f32Multiply(Scale, Trans);
+    WidgetTransform = m4f32Multiply(World, WidgetProjection);
+    
+    GL_Call(glUseProgram(Info->ShaderID));
+    GL_Call(glUniformMatrix4fv(Info->UThrottleTransform, 1, 0, WidgetTransform.e));
+    GL_Call(glUniform2fv(Info->UWindowSize , 1, v2f32Init(g_Platform.WindowWidth,
+                                                          g_Platform.WindowHeight).c));
+    GL_Call(glUniform2fv(Info->UThrottlePos , 1, Pos.c));
+    GL_Call(glUniform2fv(Info->UThrottleSize, 1, Dim.c));
+    GL_Call(glUniform1f(Info->UThrottle, g_Platform.Controls[0].NormThrottlePos));
+    GL_Call(glUniform1f(Info->UDeltaTime, DeltaTime));
+    
+    GL_Call(glEnable(GL_BLEND));
+    GL_Call(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+    
+    GL_Call(glBindVertexArray(Info->VertexAttribID));
+    GL_Call(glDrawArrays(GL_TRIANGLES, 0, 6));
+    GL_Call(glBindVertexArray(0));
+    
+    return;
+}
+
 
 int CALLBACK 
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCode) 
@@ -515,17 +449,13 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                                      0, 0, Instance, 0);
         
 #if RENDERER_OPENGL
-        HDC gl_device_context = GetDC(Window);
-        HGLRC gl_real_context = win32_Init_OpenGL(gl_device_context);
+        HDC   GLDeviceContext = GetDC(Window);
+        HGLRC GLRealContext   = win32_Init_OpenGL(GLDeviceContext);
         
-        opengl_renderer OpenGLRenderer =
-        {
-            .DeviceContext = gl_device_context,
-            .RealContext   = gl_real_context,
-            .CurrentWidth  = g_Platform.WindowWidth,
-            .CurrentHeight = g_Platform.WindowHeight,
-        };
-        
+        OpenGLRenderer.DeviceContext = GLDeviceContext;
+        OpenGLRenderer.RealContext   = GLRealContext;
+        OpenGLRenderer.CurrentWidth  = g_Platform.WindowWidth;
+        OpenGLRenderer.CurrentHeight = g_Platform.WindowHeight;
         
         ASSERT(gladLoadGL());
         
@@ -660,7 +590,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 QueryPerformanceCounter(&begin_frame_time_data);
                 
                 
-                win32_ProcessPendingMessages(0, &g_Platform.AppInput[0]);
+                win32_ProcessPendingMessages(0, &g_Platform.Controls[0]);
                 
                 //~ INPUT
                 
@@ -703,7 +633,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 if(g_SerialPortDevice.Connected)
                 {
-                    f32 ThrottleValue = g_Platform.AppInput[0].DroneControls.NormalizedThrottle;
+                    f32 ThrottleValue = g_Platform.Controls[0].NormThrottlePos;
                     
                     telem_packet Packet = { 0 };
                     Packet.Header.Info = (u8)((Telem_Data << 6) |
@@ -776,7 +706,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                                                                             g_Platform.WindowHeight).c));
                     GL_Call(glUniform2fv(Sprite->UThrottlePos , 1, Entity->Pos.c));
                     GL_Call(glUniform2fv(Sprite->UThrottleSize, 1, Entity->Dim.c));
-                    GL_Call(glUniform1f(Sprite->UThrottle, g_Platform.AppInput[0].DroneControls.NormalizedThrottle));
+                    GL_Call(glUniform1f(Sprite->UThrottle, g_Platform.Controls[0].NormThrottlePos));
                     GL_Call(glUniform1f(Sprite->UDeltaTime, AppState->DeltaTime));
                     
                     GL_Call(glEnable(GL_BLEND));
@@ -819,7 +749,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                                UIText->Pos.x, UIText->Pos.x, 1, UIText->Color);
                 }
                 
-                SwapBuffers(gl_device_context);
+                SwapBuffers(GLDeviceContext);
 #endif
                 
                 //~ DELAY

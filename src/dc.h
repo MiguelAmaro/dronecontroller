@@ -6,22 +6,9 @@
 #include "dc_platform.h"
 #include "dc_entity.h"
 #include "dc_memory.h"
+#include "dc_ui.h"
 
 #define ENTITY_MAX_COUNT 256
-#define UITEXT_MAX_COUNT 256
-
-typedef struct ui_text ui_text;
-struct ui_text
-{
-    u32 EntityID;
-    v3f32 Color;
-    
-    str8 String;
-    
-    v2f32 Pos;
-    
-    f32 Scale;
-};
 
 typedef struct glyph glyph;
 struct glyph
