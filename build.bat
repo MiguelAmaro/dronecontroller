@@ -31,10 +31,7 @@ opengl32.lib ^
 kernel32.lib ^
 ws2_32.lib ^
 shell32.lib ^
-..\lib\bin\cglm.lib ^
 ..\lib\freetype2\dlls\win64\freetype.lib
-
-
 
 rem ************************************************************
 rem **********              START BUILD               **********

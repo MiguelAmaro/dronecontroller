@@ -22,18 +22,15 @@ u32 Entity_Create(app_state *AppState, v2f32 Pos , v2f32 Dim, entity_type Type)
     return AppState->EntityCount++;
 }
 
-
-
 void
 App_Init(platform *Platform_)
 {
     return;
 }
 
-b32 App_Update(app_backbuffer *Backbuffer, platform *Platform, render_data *RenderData)
+void 
+App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderData)
 {
-    b32 app_should_quit = 0;
-    
     app_state *AppState = (app_state *)Platform->PermanentStorage;
     
     // MEMORY
@@ -72,7 +69,7 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform, render_data *Rend
     //*************************************************
     if(Platform->Controls[0].AlphaKeys[Key_q].EndedDown)
     {
-        app_should_quit = 1;
+        Platform->QuitApp = 1;
     }
     
     if(Platform->Controls[0].AlphaKeys[Key_c].EndedDown)
@@ -129,5 +126,5 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform, render_data *Rend
     
     UIEndFrame();
     
-    return app_should_quit;
+    return;
 }

@@ -481,7 +481,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 AppRenderBuffer.Height        = g_BackBuffer.Height;
                 AppRenderBuffer.BytesPerPixel = g_BackBuffer.BytesPerPixel;
                 
-                g_Platform.QuitApp |= App_Update(&AppRenderBuffer, &g_Platform, &Renderer->RenderData);
+                App_Update(&g_Platform, &AppRenderBuffer, &Renderer->RenderData);
                 
                 RendererEndFrame(Renderer);
                 

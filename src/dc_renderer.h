@@ -93,8 +93,7 @@ opengl_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, re
     OPENGL_DBG(glBindVertexArray(0));
     
     OpenGLCreateShader(&GuageShader->ID,
-                       &GuageSh
-                       ader->FileInfo,
+                       &GuageShader->FileInfo,
                        "../res/shaders/throttle.glsl",
                        sizeof("../res/shaders/throttle.glsl"));
     

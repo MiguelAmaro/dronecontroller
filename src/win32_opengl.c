@@ -2,12 +2,11 @@
 #include "dc_opengl.h"
 
 #include "dc_strings.h"
-//#define STB_IMAGE_IMPLEMENTATION
-//#include "stb/stb_image.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb/stb_image.h"
 
 #define VERTSEC ("//~VERT SHADER")
 #define FRAGSEC ("//~FRAG SHADER")
-
 
 void
 OpenGLCreateShader(u32 *ShaderID, opengl_shader_file_info *Info, u8 *Path, u32 PathSize)
@@ -39,8 +38,9 @@ OpenGLCreateShader(u32 *ShaderID, opengl_shader_file_info *Info, u8 *Path, u32 P
     CopyFile(Info->ShaderPath,
              InUseShaderPath, 0);
     
-    size_t ShaderFileSize = ((Info->CurrentShaderFileInfo.nFileSizeHigh << 32) |
+    size_t ShaderFileSize = ((Info->CurrentShaderFileInfo.nFileSizeHigh * (MAXDWORD + 1)) +
                              (Info->CurrentShaderFileInfo.nFileSizeLow));
+    
     
     Info->InUseShaderFileA = 0;
     Info->InUseShaderFileB = 0;
@@ -95,8 +95,7 @@ OpenGLHotSwapShader(u32 *ShaderID, opengl_shader_file_info *Info)
             CopyFile(Info->ShaderPath,
                      InUseShaderPath, 0);
             
-            
-            size_t ShaderFileSize = ((UpdatedShaderFileInfo.nFileSizeHigh << 32) |
+            size_t ShaderFileSize = ((UpdatedShaderFileInfo.nFileSizeHigh * (MAXDWORD + 1)) +
                                      (UpdatedShaderFileInfo.nFileSizeLow));
             
             Info->InUseShaderFileB = CreateFileA(InUseShaderPath,
@@ -137,7 +136,7 @@ OpenGLHotSwapShader(u32 *ShaderID, opengl_shader_file_info *Info)
             CopyFile(Info->ShaderPath,
                      InUseShaderPath, 0);
             
-            size_t ShaderFileSize = ((UpdatedShaderFileInfo.nFileSizeHigh << 32) |
+            size_t ShaderFileSize = ((UpdatedShaderFileInfo.nFileSizeHigh * (MAXDWORD + 1)) +
                                      (UpdatedShaderFileInfo.nFileSizeLow));
             
             Info->InUseShaderFileA = CreateFileA(InUseShaderPath,

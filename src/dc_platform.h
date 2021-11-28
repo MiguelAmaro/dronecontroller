@@ -3,11 +3,11 @@
 #ifndef DRONECONTROLLER_PLATFORM_H
 #define DRONECONTROLLER_PLATFORM_H
 
-#include <stdint.h>
+#include "dc_types.h"
+#include "dc_math.h"
 
 #define ASSERT(Expression) if(!(Expression)){ *(u32 *)0x00 = 0; }
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
-#include "dc_math.h"
 
 #if 0
 #define PLATFORM_FREE_FILE_MEMORY(name) void name(ThreadContext *thread, void *memory)

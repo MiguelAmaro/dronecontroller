@@ -65,8 +65,7 @@ struct app_backbuffer
 #include "dc.c"
 
 void App_Init  (platform *Platform_);
-
-b32  App_Update(app_backbuffer *Backbuffer, platform *Platform, render_data *RenderData);
+void App_Update(platform *Platform_, app_backbuffer *Backbuffer, render_data *RenderData);
 
 
 #endif //DRONECONTROLLER_H
