@@ -1,5 +1,31 @@
 #include "dc_render_commands.h"
 
+void PushClear(render_data *RenderData, v4f32 Color)
+{
+    u8 *EndOfCommandBuffer  = (RenderData->RenderCommands + RenderData->RenderCommandsMaxSize);
+    u8 *CommandPushLocation = (RenderData->RenderCommandsFilledPos +
+                               sizeof(render_command_header) + 
+                               sizeof(render_command_data_clear));
+    
+    if(CommandPushLocation < EndOfCommandBuffer)
+    {
+        render_command_header *CommandHeader;
+        
+        CommandHeader = (render_command_header *)(RenderData->RenderCommandsFilledPos);
+        CommandHeader->Type = RenderCommand_Clear;
+        
+        render_command_data_clear *Data;
+        Data = (render_command_data_clear *)((u8 *)CommandHeader + 
+                                             sizeof(render_command_header));
+        
+        Data->Color = Color;
+        
+        RenderData->RenderCommandsFilledPos = CommandPushLocation;
+    }
+    
+    return;
+}
+
 void PushGuage(render_data *RenderData, v2f32 Pos, v2f32 Dim, f32 NormThrottlePos)
 {
     untextured_vertex QuadVerts[4] =
@@ -38,8 +64,8 @@ void PushGuage(render_data *RenderData, v2f32 Pos, v2f32 Dim, f32 NormThrottlePo
             
             render_command_header *CommandHeader;
             
-            CommandHeader->Type = RenderCommand_Guage;
             CommandHeader = (render_command_header *)(RenderData->RenderCommandsFilledPos);
+            CommandHeader->Type = RenderCommand_Guage;
             
             render_command_data_guage *Data;
             Data = (render_command_data_guage *)(CommandHeader + sizeof(render_command_header));
@@ -116,8 +142,8 @@ void RenderLabel(render_data *RenderData, glyph_hash *GlyphHash,
             
             render_command_header *CommandHeader;
             
-            CommandHeader->Type = RenderCommand_Guage;
             CommandHeader = (render_command_header *)(RenderData->RenderCommandsFilledPos);
+            CommandHeader->Type = RenderCommand_Guage;
             
             render_command_data_label *Data;
             Data = (render_command_data_label *)(CommandHeader + sizeof(render_command_header));

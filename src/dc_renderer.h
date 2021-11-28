@@ -46,8 +46,9 @@ opengl_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, re
     
     u32 RenderCommandBufferSize = 65536;
     
-    RenderData.TexturedVertMaxCount   = VertexMaxCount;
-    RenderData.UntexturedVertMaxCount = VertexMaxCount;
+    RenderData.TexturedVertMaxCount    = VertexMaxCount;
+    RenderData.UntexturedVertMaxCount  = VertexMaxCount;
+    RenderData.RenderCommandsMaxSize   = RenderCommandBufferSize;
     
     RenderData.TexturedVerts   = VirtualAlloc(0, VertexMaxCount * sizeof(textured_vertex),
                                               MEM_COMMIT | MEM_RESERVE,
@@ -66,23 +67,34 @@ opengl_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, re
                                               MEM_COMMIT | MEM_RESERVE,
                                               PAGE_READWRITE);
     
+    ASSERT(RenderData.TexturedVerts   &&
+           RenderData.UntexturedVerts &&
+           RenderData.Indices         &&
+           RenderData.RenderCommands);
+    
     OpenGLRenderer->RenderData = RenderData;
     
     opengl_shader_guage *GuageShader = &OpenGLRenderer->GuageShader;
     opengl_shader_label *LabelShader = &OpenGLRenderer->LabelShader;
     
-    // UNBIND BUFFER
-    OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, 0)); 
-    OPENGL_DBG(glBindVertexArray(0));
     
     OPENGL_DBG(glGenBuffers     (1, &OpenGLRenderer->UntexturedVertBufferID));
-    OPENGL_DBG(glGenBuffers     (1, &OpenGLRenderer->TexturedVertBufferID));
+    OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, 0)); 
     
-    OPENGL_DBG(glGenVertexArrays(1, &OpenGLRenderer->UntexturedVertAttribID));
-    OPENGL_DBG(glGenVertexArrays(1, &OpenGLRenderer->TexturedVertAttribID));
+    
+    OPENGL_DBG(glGenBuffers     (1, &OpenGLRenderer->TexturedVertBufferID));
+    OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, 0)); 
+    /*
+    OPENGL_DBG(glEnableVertexAttribArray(0));
+    OPENGL_DBG(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(textured_vertex), (void *)0x00));
+    */
+    
+    OPENGL_DBG(glGenVertexArrays(1, &OpenGLRenderer->IndexBufferID));
+    OPENGL_DBG(glBindVertexArray(0));
     
     OpenGLCreateShader(&GuageShader->ID,
-                       &GuageShader->FileInfo,
+                       &GuageSh
+                       ader->FileInfo,
                        "../res/shaders/throttle.glsl",
                        sizeof("../res/shaders/throttle.glsl"));
     
@@ -108,15 +120,57 @@ opengl_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, re
     return OpenGLRenderer;
 }
 
-void RendererEndFrame(opengl_renderer *OpenGL, render_data *RenderData)
+void RendererBeginFrame(opengl_renderer *OpenGL, s32 WindowWidth, s32 WindowHeight)
 {
+    render_data *RenderData = &OpenGL->RenderData;
+    
+    OpenGLHotSwapShader(&OpenGL->GuageShader.ID, &OpenGL->GuageShader.FileInfo);
+    OpenGLHotSwapShader(&OpenGL->LabelShader.ID, &OpenGL->LabelShader.FileInfo);
+    
+    OpenGL->WindowWidth  = WindowWidth;
+    OpenGL->WindowHeight = WindowHeight;
+    
+    glViewport(0, 0, OpenGL->WindowWidth, OpenGL->WindowHeight);
+    
+    RenderData->RenderCommandsFilledPos = RenderData->RenderCommands;
+    
+    RenderData->TexturedVertCount   = 0;
+    RenderData->UntexturedVertCount = 0;
+    RenderData->IndexCount          = 0;
+    
+    
+};
+
+void RendererEndFrame(opengl_renderer *OpenGL)
+{
+    render_data *RenderData = &OpenGL->RenderData;
+    
+    OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, OpenGL->TexturedVertBufferID)); 
+    OPENGL_DBG(glBufferData(GL_ARRAY_BUFFER,
+                            RenderData->UntexturedVertCount * sizeof(untextured_vertex),
+                            RenderData->UntexturedVerts,
+                            GL_STREAM_DRAW));
+    
+    OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, OpenGL->UntexturedVertBufferID)); 
+    OPENGL_DBG(glBufferData(GL_ARRAY_BUFFER,
+                            RenderData->TexturedVertCount * sizeof(textured_vertex),
+                            RenderData->TexturedVerts,
+                            GL_STREAM_DRAW));
+    
+    
+    OPENGL_DBG(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, OpenGL->IndexBufferID)); 
+    OPENGL_DBG(glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                            RenderData->IndexCount * sizeof(u16),
+                            RenderData->Indices,
+                            GL_STREAM_DRAW));
+    
 #if 0
     OPENGL_DBG(glBindVertexArray(    Glyph->VertexAttribID));
     
-    OPENGL_DBG(glEnableVertexAttribArray(0));
     OPENGL_DBG(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(f32), (void *)0x00));
     
     // UNBIND BUFFER
+    OPENGL_DBG(glEnableVertexAttribArray(0));
     OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, 0)); 
     OPENGL_DBG(glBindVertexArray(0));
     
@@ -130,25 +184,40 @@ void RendererEndFrame(opengl_renderer *OpenGL, render_data *RenderData)
     
     u8 *CurrentCommandHeaderPos = RenderData->RenderCommands;
     
+    m4f32 OrthoProjection = m4f32Orthographic(0.0f, OpenGL->WindowWidth,
+                                              0.0f, OpenGL->WindowHeight,
+                                              0.1f, 100.0f);
+    
     while(CurrentCommandHeaderPos < RenderData->RenderCommandsFilledPos)
     {
         render_command_header *CommandHeader;
         
         CommandHeader = (render_command_header *)CurrentCommandHeaderPos;
         
-        m4f32 OrthoProjection = m4f32Orthographic(0.0f, OpenGL->WindowWidth,
-                                                  0.0f, OpenGL->WindowHeight,
-                                                  0.1f, 100.0f);
-        
         switch(CommandHeader->Type)
         {
+            case RenderCommand_Clear:
+            {
+                CurrentCommandHeaderPos += (sizeof(render_command_header) + 
+                                            sizeof(render_command_data_clear));
+                
+                render_command_data_clear *ClearData = 
+                    (render_command_data_clear *)((u8 *)CommandHeader + 
+                                                  sizeof(render_command_header));
+                
+                v4f32 Color = ClearData->Color;
+                
+                glClearColor(Color.r, Color.g, Color.b, Color.a);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            } break;
             case RenderCommand_Guage:
             {
                 CurrentCommandHeaderPos += (sizeof(render_command_header) + 
                                             sizeof(render_command_data_guage));
                 
-                render_command_data_guage *GuageData = ((render_command_data_guage *)CommandHeader + 
-                                                        sizeof(render_command_header));
+                render_command_data_guage *GuageData =
+                    ((render_command_data_guage *)((u8 *)CommandHeader + 
+                                                   sizeof(render_command_header)));
                 
                 m4f32 Trans  = m4f32Translate(v3f32Init(GuageData->Pos.x, GuageData->Pos.y, 0.0f));
                 m4f32 Scale  = m4f32Scale(GuageData->Dim.x / 2.0f, GuageData->Dim.y / 2.0f, 1.0f);
@@ -163,6 +232,10 @@ void RendererEndFrame(opengl_renderer *OpenGL, render_data *RenderData)
                 
                 OPENGL_DBG(glUseProgram(GuageShader->ID));
                 
+                OPENGL_DBG(glEnableVertexAttribArray(0));
+                OPENGL_DBG(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(untextured_vertex), (void *)0x00));
+                
+                
                 OPENGL_DBG(glUniform2fv(GuageShader->UIDWindowSize  , 1, WindowDim.c));
                 OPENGL_DBG(glUniform1f (GuageShader->UIDDeltaTime   ,    OpenGL->DeltaTime));
                 OPENGL_DBG(glUniform1f (GuageShader->UIDThrottle    ,    GuageData->NormThrottlePos));
@@ -173,8 +246,10 @@ void RendererEndFrame(opengl_renderer *OpenGL, render_data *RenderData)
                 OPENGL_DBG(glEnable(GL_BLEND));
                 OPENGL_DBG(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
                 
-                OPENGL_DBG(glBindVertexArray(OpenGL->UntexturedVertAttribID));
-                OPENGL_DBG(glDrawArrays(GL_TRIANGLES, 0, 6));
+                OPENGL_DBG(glBindVertexArray(OpenGL->IndexBufferID));
+                OPENGL_DBG(glDrawElementsBaseVertex(GL_TRIANGLES, 6 * GuageData->QuadCount, GL_UNSIGNED_SHORT,
+                                                    (GLvoid *)(GuageData->IndexArrayOffset*sizeof(u16)),
+                                                    GuageData->VertexArrayOffset));
                 OPENGL_DBG(glBindVertexArray(0));
             } break;
             case RenderCommand_Label:
@@ -182,8 +257,9 @@ void RendererEndFrame(opengl_renderer *OpenGL, render_data *RenderData)
                 CurrentCommandHeaderPos += (sizeof(render_command_header) + 
                                             sizeof(render_command_data_label));
                 
-                render_command_data_label *LabelData = ((render_command_data_label *)CommandHeader + 
-                                                        sizeof(render_command_header));
+                render_command_data_label *LabelData =
+                    ((render_command_data_label *)((u8 *)CommandHeader + 
+                                                   sizeof(render_command_header)));
                 
                 glEnable(GL_CULL_FACE);
                 glEnable(GL_BLEND);
@@ -207,12 +283,12 @@ void RendererEndFrame(opengl_renderer *OpenGL, render_data *RenderData)
                                        LabelData->Color.z));
                 
                 OPENGL_DBG(glActiveTexture(GL_TEXTURE0));
-                OPENGL_DBG(glBindVertexArray(OpenGL->TexturedVertAttribID));
+                OPENGL_DBG(glBindVertexArray(OpenGL->IndexBufferID));
                 
                 // render glyph texture over quad
                 //OPENGL_DBG(glBindTexture(GL_TEXTURE_2D, Glyph.TexID));
                 // update content of VBO memory
-                OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, OpenGL->TexturedVertAttribID));
+                OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, OpenGL->IndexBufferID));
                 //glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices); 
                 OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, 0));
                 // render quad

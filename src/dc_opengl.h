@@ -55,10 +55,10 @@ struct opengl_renderer
     f32 DeltaTime;
     
     u32 UntexturedVertBufferID;
-    u32 UntexturedVertAttribID;
+    //u32 UntexturedVertAttribID;
     
     u32 TexturedVertBufferID;
-    u32 TexturedVertAttribID;
+    //u32 TexturedVertAttribID;
     
     u32 IndexBufferID; // NOTE(MIGUEL): shared
     

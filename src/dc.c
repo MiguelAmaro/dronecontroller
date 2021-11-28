@@ -30,7 +30,7 @@ App_Init(platform *Platform_)
     return;
 }
 
-b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
+b32 App_Update(app_backbuffer *Backbuffer, platform *Platform, render_data *RenderData)
 {
     b32 app_should_quit = 0;
     
@@ -52,6 +52,14 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
         AppState->IsInitialized = 1;
     }
     
+    
+    PushClear(RenderData, v4f32Init(0.12f, 0.12f, 0.12f, 1.0f));
+    
+    PushGuage(RenderData, v2f32Init(Platform->WindowWidth   / 2.0f,
+                                    Platform->WindowHeight  / 2.0f),
+              v2f32Init(240.0f, 40.0f),
+              Platform->Controls[0].NormThrottlePos);
+    
     UIBeginFrame(Platform);
     
     AppState->DeltaTime += Platform->CurrentTime - Platform->LastTime;
@@ -70,6 +78,7 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
     if(Platform->Controls[0].AlphaKeys[Key_c].EndedDown)
     {
         // TODO(MIGUEL): Should connect to a board
+        
     }
     
     if(Platform->Controls[0].AlphaKeys[Key_w].EndedDown)

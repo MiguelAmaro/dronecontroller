@@ -13,13 +13,12 @@
 #include "dc.h"
 #include "dc_math.h"
 #include "dc_renderer.h"
+#include "dc_render_commands.h"
 #include "dc_platform.h"
 #include "dc_serialport.h"
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
-
-global opengl_renderer  OpenGLRenderer = { 0 };
 
 global platform         g_Platform   = {0};
 global win32_state      g_Win32State = {0};
@@ -414,7 +413,11 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 .QuadMaxCountPerFrame = 256,
             };
             
-            RendererInit(Window, g_Platform.WindowWidth, g_Platform.WindowHeight, &Constraints);
+            
+            opengl_renderer *Renderer = RendererInit(Window,
+                                                     g_Platform.WindowWidth,
+                                                     g_Platform.WindowHeight,
+                                                     &Constraints);
             
             app_state *AppState = (app_state *)g_Platform.PermanentStorage;
             GlyphHashTableInit(AppState);
@@ -469,14 +472,18 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 }
                 
                 //~ PROCESSING
+                
+                RendererBeginFrame(Renderer, g_Platform.WindowWidth, g_Platform.WindowHeight);
+                
                 app_backbuffer AppRenderBuffer = { 0 };
                 AppRenderBuffer.Data          = g_BackBuffer.Data;
                 AppRenderBuffer.Width         = g_BackBuffer.Width;
                 AppRenderBuffer.Height        = g_BackBuffer.Height;
                 AppRenderBuffer.BytesPerPixel = g_BackBuffer.BytesPerPixel;
                 
-                g_Platform.QuitApp |= App_Update(&AppRenderBuffer, &g_Platform);
+                g_Platform.QuitApp |= App_Update(&AppRenderBuffer, &g_Platform, &Renderer->RenderData);
                 
+                RendererEndFrame(Renderer);
                 
                 //~ OUTPUT
                 
@@ -506,22 +513,6 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 }
                 
                 //- OPENGL RENDERING
-                OpenGLHotSwapShader(&OpenGLRenderer.GuageShader.ID, &OpenGLRenderer.GuageShader.FileInfo);
-                OpenGLHotSwapShader(&OpenGLRenderer.LabelShader.ID, &OpenGLRenderer.LabelShader.FileInfo);
-                
-                if((g_Platform.WindowWidth  != OpenGLRenderer.WindowWidth) || 
-                   (g_Platform.WindowHeight != OpenGLRenderer.WindowHeight))
-                {
-                    OpenGLRenderer.WindowWidth  = g_Platform.WindowWidth;
-                    OpenGLRenderer.WindowHeight = g_Platform.WindowHeight;
-                    
-                    glViewport(0, 0, OpenGLRenderer.WindowWidth, OpenGLRenderer.WindowHeight);
-                }
-                
-                glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-                
-                //RendererEndFrame(OpenGLRenderer, RenderData);
                 
                 
 #if 0

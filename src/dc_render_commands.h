@@ -28,6 +28,14 @@ struct render_command_textured_quads
     u32 IndexArrayOffset ; // NOTE(casey): Uses 4 vertices per quad
 };
 
+
+typedef struct render_command_data_clear render_command_data_clear;
+struct render_command_data_clear
+{
+    v4f32 Color;
+};
+
+
 typedef struct render_command_data_guage render_command_data_guage;
 struct render_command_data_guage
 {
@@ -59,6 +67,7 @@ struct render_command_data_label
 typedef enum render_command_type render_command_type;
 enum render_command_type
 {
+    RenderCommand_Clear,
     RenderCommand_Guage,
     RenderCommand_Label,
 };
