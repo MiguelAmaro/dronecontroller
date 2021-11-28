@@ -3,7 +3,74 @@
 #ifndef FLIGHTCONTROL_FILEIO_H
 #define FLIGHTCONTROL_FILEIO_H
 
-void 
+#include "dc_types.h"
+#include "dc_platform.h"
+
+typedef struct str8 str8;
+struct str8
+{
+    u8 *Data;
+    u32 Count;
+};
+
+//- STRING FUNCTIONS 
+
+internaldef
+str8 str8Init(u8 *String, u32 Count)
+{
+    str8 Result = { 0 };
+    
+    Result.Data  = String;
+    Result.Count = (Count > 0) ? (Count - 1): 0; // Ignore Null Terminator
+    
+    ASSERT(Result.Count != 4294967295);
+    
+    return Result;
+}
+
+internaldef
+u32 str8GetCStrLength(u8 *Char)
+{
+    u32 Result = 0;
+    while(*Char++) {Result++;}
+    
+    return Result;
+}
+
+internaldef
+void str8RemoveFromEndToChar(u8 Char, str8 *A)
+{
+    u8  *EndOfA = A->Data + A->Count;
+    
+    while((*--EndOfA != Char) && (A->Count >= 0))
+    {
+        *EndOfA = 0;
+        A->Count--;
+    }
+    
+    return;
+}
+
+internaldef
+void str8AppendBtoA(str8 *A, u32 ASize, str8 B)
+{
+    u8  *EndOfA      = A->Data + A->Count - 1;
+    u32  AUnusedSize = ASize - A->Count;
+    
+    if(AUnusedSize - B.Count > 0)
+    {
+        MemoryCopy(B.Data, B.Count, EndOfA ,AUnusedSize);
+        
+        A->Count += B.Count;
+    }
+    
+    return;
+}
+
+
+//- UTILS 
+
+internaldef void 
 BuildPrefixSuffixTable(u32* table, u32 table_size,readonly u8 *SearchTerm)
 {
     //printf("Before: %p \n", table);
@@ -59,7 +126,8 @@ BuildPrefixSuffixTable(u32* table, u32 table_size,readonly u8 *SearchTerm)
 
 
 // TODO(MIGUEL): Take out file and use u8 * instead
-u32 StringMatchKMP(readonly u8 *Text, readonly u32 BytesToRead, readonly u8 *SearchTerm)
+internaldef u32 
+StringMatchKMP(readonly u8 *Text, readonly u32 BytesToRead, readonly u8 *SearchTerm)
 {
     // NOTE(MIGUEL): This implemenation only returns the first match!!
     readonly u32 SearchTermLength = strlen(SearchTerm);

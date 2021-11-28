@@ -1,10 +1,7 @@
 #include "dc_opengl.h"
 #include "dc_memory.h"
 
-//~ PLATFORM INDEPENDENT
-// TODO(MIGUEL): Change GL_ to OpenGL_
-GLenum 
-GL_CheckError_(readonly u8 *file, u32 line)
+GLenum OpenGLCheckError_(readonly u8 *file, u32 line)
 {
     GLenum errorCode;
     while ((errorCode = glGetError()) != GL_NO_ERROR)
@@ -25,7 +22,7 @@ GL_CheckError_(readonly u8 *file, u32 line)
     return errorCode;
 }
 
-b32 GL_Log(readonly u8 *file, readonly u32 line, readonly u8* function)
+b32 OpenGLLog(readonly u8 *file, readonly u32 line, readonly u8* function)
 {
     GLenum errorCode;
     while (errorCode = glGetError())
@@ -49,525 +46,77 @@ b32 GL_Log(readonly u8 *file, readonly u32 line, readonly u8* function)
     return true;
 }
 
-void GL_ClearError(void)
+void OpenGLClearError(void)
 {
     while(glGetError() != GL_NO_ERROR);
     
     return;
 }
 
-void OpenGL_CreateVertexBuffer(u32 *VertexBufferID, f32 *Vertices, u32 Size, GLenum DrawType)
+void OpenGLCreateVertexBuffer(u32 *VertexBufferID, f32 *Vertices, u32 Size, GLenum DrawType)
 {
-    GL_Call(glGenBuffers(1, VertexBufferID));
-    GL_Call(glBindBuffer(GL_ARRAY_BUFFER, *VertexBufferID));
-    GL_Call(glBufferData(GL_ARRAY_BUFFER, Size, Vertices, DrawType));
+    OPENGL_DBG(glGenBuffers(1, VertexBufferID));
+    OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, *VertexBufferID));
+    OPENGL_DBG(glBufferData(GL_ARRAY_BUFFER, Size, Vertices, DrawType));
     
     return;
 }
 
-void OpenGL_VertexBuffer_Destroy(u32 vertex_buffer_id)
+void OpenGLVertexBuffer_Destroy(u32 vertex_buffer_id)
 {
-    GL_Call(glDeleteBuffers(1, &vertex_buffer_id));
+    OPENGL_DBG(glDeleteBuffers(1, &vertex_buffer_id));
     
     return;
 }
 
-void OpenGL_VertexBuffer_Bind(u32 vertex_buffer_id)
+void OpenGLVertexBuffer_Bind(u32 vertex_buffer_id)
 {
-    GL_Call(glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_id));
+    OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_id));
     
     return;
 }
 
-void OpenGL_VertexBuffer_Unbind(void)
+void OpenGLVertexBuffer_Unbind(void)
 {
-    GL_Call(glBindBuffer(GL_ARRAY_BUFFER, 0));
+    OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, 0));
     
     return;
 }
 
 // NOTE(MIGUEL): Mimic VertexBuffer functions for index buffers
 
-void OpenGL_IndexBuffer_Create(u32 *index_buffer_id, f32 *index_buffer, u32 count)
+void OpenGLIndexBuffer_Create(u32 *index_buffer_id, f32 *index_buffer, u32 count)
 {
-    GL_Call(glGenBuffers(1, index_buffer_id));
-    GL_Call(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *index_buffer_id));
-    GL_Call(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(u32), index_buffer, GL_STATIC_DRAW));
+    OPENGL_DBG(glGenBuffers(1, index_buffer_id));
+    OPENGL_DBG(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *index_buffer_id));
+    OPENGL_DBG(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(u32), index_buffer, GL_STATIC_DRAW));
     
     return;
 }
 
-void OpenGL_IndexBuffer_Destroy(u32 index_buffer_id)
+void OpenGLIndexBuffer_Destroy(u32 index_buffer_id)
 {
-    GL_Call(glDeleteBuffers(1, &index_buffer_id));
+    OPENGL_DBG(glDeleteBuffers(1, &index_buffer_id));
     
     return;
 }
 
-void OpenGL_IndexBuffer_Bind(u32 index_buffer_id)
+void OpenGLIndexBuffer_Bind(u32 index_buffer_id)
 {
-    GL_Call(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_id));
+    OPENGL_DBG(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_id));
     
     return;
 }
 
-void OpenGL_IndexBuffer_Unbind(void)
+void OpenGLIndexBuffer_Unbind(void)
 {
-    GL_Call(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+    OPENGL_DBG(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
     
     return;
 }
 
-void OpenGL_CreateShader(opengl_render_info *Info, u8 *Path, u32 PathSize)
-{
-    memset(&Info->CurrentShaderFileInfo, 0, sizeof(Info->CurrentShaderFileInfo));
-    
-    MemoryCopy(Path,
-               PathSize,
-               &Info->ShaderPath,
-               ARRAY_SIZE(Info->ShaderPath));
-    
-    FindFirstFileA(Info->ShaderPath,
-                   &Info->CurrentShaderFileInfo);
-    
-    
-    u8 InUseShaderPath[256];
-    MemoryCopy(&Info->ShaderPath,
-               ARRAY_SIZE(Info->ShaderPath),
-               InUseShaderPath,
-               ARRAY_SIZE(InUseShaderPath));
-    
-    // NOTE(MIGUEL): Update Extension
-    str8 A = str8Init(InUseShaderPath, PathSize);
-    str8 B = str8Init("_inuse_a.glsl"   , sizeof("_inuse_a.glsl"));
-    
-    str8RemoveFromEndToChar('.', &A);
-    str8AppendBtoA(&A, ARRAY_SIZE(InUseShaderPath), B);
-    
-    CopyFile(Info->ShaderPath,
-             InUseShaderPath, 0);
-    
-    size_t ShaderFileSize = ((Info->CurrentShaderFileInfo.nFileSizeHigh << 32) |
-                             (Info->CurrentShaderFileInfo.nFileSizeLow));
-    
-    Info->InUseShaderFileA = 0;
-    Info->InUseShaderFileB = 0;
-    
-    Info->InUseShaderFileA = CreateFileA(InUseShaderPath,
-                                         GENERIC_READ, 0, 0,
-                                         OPEN_EXISTING,
-                                         FILE_FLAG_DELETE_ON_CLOSE,
-                                         0);
-    ASSERT(Info->InUseShaderFileA);
-    
-    OpenGL_LoadShaderFromSource(&Info->ShaderID,
-                                Info->ShaderPath,
-                                Info->InUseShaderFileA, ShaderFileSize);
-    
-    return;
-}
-
-void OpenGL_HotSwapShader(opengl_render_info *Info)
-{
-    WIN32_FIND_DATAA UpdatedShaderFileInfo = {0};
-    
-    
-    FindFirstFileA(Info->ShaderPath,
-                   &UpdatedShaderFileInfo);
-    
-    if((UpdatedShaderFileInfo.ftLastWriteTime.dwLowDateTime !=
-        Info->CurrentShaderFileInfo.ftLastWriteTime.dwLowDateTime) ||
-       (UpdatedShaderFileInfo.ftLastWriteTime.dwHighDateTime !=
-        Info->CurrentShaderFileInfo.ftLastWriteTime.dwHighDateTime)) 
-    {
-        
-        u32 NewShader = 0;
-        
-        if(Info->InUseShaderFileA)
-        {
-            u8 InUseShaderPath[256];
-            MemoryCopy(&Info->ShaderPath,
-                       ARRAY_SIZE(Info->ShaderPath),
-                       InUseShaderPath,
-                       ARRAY_SIZE(InUseShaderPath));
-            
-            // NOTE(MIGUEL): Update Extension
-            str8 A = str8Init(InUseShaderPath, str8GetCStrLength(InUseShaderPath));
-            str8 B = str8Init("_inuse_b.glsl"   , sizeof("_inuse_b.glsl"));
-            
-            str8RemoveFromEndToChar('.', &A);
-            str8AppendBtoA(&A, ARRAY_SIZE(InUseShaderPath), B);
-            
-            
-            CopyFile(Info->ShaderPath,
-                     InUseShaderPath, 0);
-            
-            
-            size_t ShaderFileSize = ((UpdatedShaderFileInfo.nFileSizeHigh << 32) |
-                                     (UpdatedShaderFileInfo.nFileSizeLow));
-            
-            Info->InUseShaderFileB = CreateFileA(InUseShaderPath,
-                                                 GENERIC_READ, 0, 0,
-                                                 OPEN_EXISTING,
-                                                 FILE_FLAG_DELETE_ON_CLOSE,
-                                                 0);
-            
-            if(OpenGL_LoadShaderFromSource(&NewShader, InUseShaderPath,
-                                           Info->InUseShaderFileB, ShaderFileSize))
-            {
-                glDeleteShader(Info->ShaderID);
-                Info->ShaderID = NewShader;
-            }
-            
-            CloseHandle(Info->InUseShaderFileA);
-            Info->InUseShaderFileA = 0;
-            
-            Info->CurrentShaderFileInfo.ftLastWriteTime =
-                UpdatedShaderFileInfo.ftLastWriteTime;
-        }
-        else if(Info->InUseShaderFileB)
-        {
-            u8 InUseShaderPath[256];
-            MemoryCopy(&Info->ShaderPath,
-                       ARRAY_SIZE(Info->ShaderPath),
-                       InUseShaderPath,
-                       ARRAY_SIZE(InUseShaderPath));
-            
-            // NOTE(MIGUEL): Update Extension
-            str8 A = str8Init(InUseShaderPath, str8GetCStrLength(InUseShaderPath));
-            str8 B = str8Init("_inuse_a.glsl"   , sizeof("_inuse_a.glsl"));
-            
-            str8RemoveFromEndToChar('.', &A);
-            str8AppendBtoA(&A, ARRAY_SIZE(InUseShaderPath), B);
-            
-            
-            CopyFile(Info->ShaderPath,
-                     InUseShaderPath, 0);
-            
-            size_t ShaderFileSize = ((UpdatedShaderFileInfo.nFileSizeHigh << 32) |
-                                     (UpdatedShaderFileInfo.nFileSizeLow));
-            
-            Info->InUseShaderFileA = CreateFileA(InUseShaderPath,
-                                                 GENERIC_READ, 0, 0,
-                                                 OPEN_EXISTING,
-                                                 FILE_FLAG_DELETE_ON_CLOSE,
-                                                 0);
-            
-            if(OpenGL_LoadShaderFromSource(&NewShader, InUseShaderPath,
-                                           Info->InUseShaderFileA, ShaderFileSize))
-            {
-                glDeleteShader(Info->ShaderID);
-                Info->ShaderID = NewShader;
-            }
-            
-            CloseHandle(Info->InUseShaderFileB);
-            Info->InUseShaderFileB = 0;
-            
-            Info->CurrentShaderFileInfo.ftLastWriteTime = UpdatedShaderFileInfo.ftLastWriteTime;
-        }
-    }
-    
-    return;
-}
-
-
-//~ WINDOWS
-
-// NOTE(MIGUEL): Sould I get a higher version of opengl via glad?
-//PFNWGLGETEXTENSIONSSTRINGARBPROC wglGetExtensionsStringARB;
-//PFNWGLCHOOSEPIXELFORMATARBPROC wglChoosePixelFormatARB;
-//PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB;
-//PFNGLGETSTRINGPROC glGetString;
-
-typedef HGLRC WINAPI wglCreateContextAttribsARB_type(HDC hdc, HGLRC hShareContext,
-                                                     const int *attribList);
-wglCreateContextAttribsARB_type *wglCreateContextAttribsARB;
-
-typedef BOOL WINAPI wglChoosePixelFormatARB_type(HDC hdc, const int *piAttribIList,
-                                                 const FLOAT *pfAttribFList, UINT nMaxFormats, int *piFormats, UINT *nNumFormats);
-wglChoosePixelFormatARB_type *wglChoosePixelFormatARB;
-
-internaldef void
-win32_Init_OpenGL_Extensions(void)
-{
-    WNDCLASS dummy_window_class = {
-        .style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
-        .lpfnWndProc = DefWindowProcA,
-        .hInstance = GetModuleHandle(0), // this function sus
-        .lpszClassName = "Dummy_WGL_Ext_Init",
-    };
-    
-    if (!RegisterClass(&dummy_window_class)) {
-        printf("Failed to register dummy OpenGL window.");
-    }
-    
-    HWND dummy_window = CreateWindowEx(
-                                       0,
-                                       dummy_window_class.lpszClassName,
-                                       "Dummy OpenGL Window",
-                                       0,
-                                       CW_USEDEFAULT,
-                                       CW_USEDEFAULT,
-                                       CW_USEDEFAULT,
-                                       CW_USEDEFAULT,
-                                       0,
-                                       0,
-                                       dummy_window_class.hInstance,
-                                       0);
-    
-    if (!dummy_window) {
-        printf("Failed to create dummy OpenGL window.");
-    }
-    
-    HDC dummy_dc = GetDC(dummy_window);
-    
-    PIXELFORMATDESCRIPTOR desired_pixel_format = {
-        .nSize = sizeof(PIXELFORMATDESCRIPTOR),
-        .nVersion = 1,
-        .iPixelType = PFD_TYPE_RGBA,
-        .dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
-        .cColorBits = 32,
-        .cAlphaBits = 8,
-        .iLayerType = PFD_MAIN_PLANE,
-        .cDepthBits = 24,
-        .cStencilBits = 8,
-    };
-    
-    int pixel_format = ChoosePixelFormat(dummy_dc, &desired_pixel_format);
-    if (!pixel_format) {
-        printf("Failed to find a suitable pixel format.");
-    }
-    if (!SetPixelFormat(dummy_dc, pixel_format, &desired_pixel_format)) {
-        printf("Failed to set the pixel format.");
-    }
-    
-    HGLRC dummy_context = wglCreateContext(dummy_dc);
-    if (!dummy_context) {
-        printf("Failed to create a dummy OpenGL rendering context.");
-    }
-    
-    if (!wglMakeCurrent(dummy_dc, dummy_context)) {
-        printf("Failed to activate dummy OpenGL rendering context.");
-    }
-    
-    wglCreateContextAttribsARB = (wglCreateContextAttribsARB_type*)wglGetProcAddress("wglCreateContextAttribsARB");
-    wglChoosePixelFormatARB    = (wglChoosePixelFormatARB_type*)   wglGetProcAddress("wglChoosePixelFormatARB"   );
-    
-    wglMakeCurrent  (dummy_dc, 0);
-    wglDeleteContext(dummy_context);
-    ReleaseDC       (dummy_window, dummy_dc);
-    DestroyWindow   (dummy_window);
-    
-    return;
-}
-
-HGLRC
-win32_Init_OpenGL(HDC real_dc)
-{
-    win32_Init_OpenGL_Extensions();
-    
-    // Now we can choose a pixel format the modern way, using wglChoosePixelFormatARB.
-    s32 pixel_format_attribs[] = {
-        WGL_DRAW_TO_WINDOW_ARB,     GL_TRUE,
-        WGL_SUPPORT_OPENGL_ARB,     GL_TRUE,
-        WGL_DOUBLE_BUFFER_ARB,      GL_TRUE,
-        WGL_ACCELERATION_ARB,       WGL_FULL_ACCELERATION_ARB,
-        WGL_PIXEL_TYPE_ARB,         WGL_TYPE_RGBA_ARB,
-        WGL_COLOR_BITS_ARB,         32,
-        WGL_DEPTH_BITS_ARB,         24,
-        WGL_STENCIL_BITS_ARB,       8,
-        0
-    };
-    
-    s32 pixel_format;
-    u32 num_formats;
-    wglChoosePixelFormatARB(real_dc, pixel_format_attribs, 0, 1, 
-                            &pixel_format, &num_formats);
-    if (!num_formats) {
-        printf("Failed to set the OpenGL 3.3 pixel format.");
-    }
-    
-    PIXELFORMATDESCRIPTOR pfd;
-    DescribePixelFormat(real_dc, pixel_format, sizeof(pfd), &pfd);
-    if (!SetPixelFormat(real_dc, pixel_format, &pfd)) {
-        printf("Failed to set the OpenGL 3.3 pixel format.");
-    }
-    
-    // Specify that we want to create an OpenGL 3.3 core profile context
-    int gl_version_attribs[] = {
-        WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
-        WGL_CONTEXT_MINOR_VERSION_ARB, 6,
-        WGL_CONTEXT_PROFILE_MASK_ARB,  WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-        0,
-    };
-    
-    HGLRC gl_version_context = wglCreateContextAttribsARB(real_dc, 0, gl_version_attribs);
-    if (!gl_version_context) {
-        printf("Failed to create %d.%d rendering context.", gl_version_attribs[1], gl_version_attribs[3]);
-    }
-    
-    if (!wglMakeCurrent(real_dc, gl_version_context)) {
-        printf("Failed to activate OpenGL %d.%d rendering context.", gl_version_attribs[1], gl_version_attribs[3]);
-    }
-    
-    
-    return gl_version_context;
-}
-
-#include "dc_fileio.h"
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb/stb_image.h"
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
-#define VERTSEC ("//~VERT SHADER")
-#define FRAGSEC ("//~FRAG SHADER")
-
-
-b32 
-OpenGL_CreateShaderProgram(readonly u8* vertexShaderSource, readonly u8* fragmentShaderSource, u32 *shaderProgram)
-{
-    
-    u32 vertexShader   = glCreateShader(GL_VERTEX_SHADER);
-    u32 fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    
-    b32 Result = 1;
-    s32 success;
-    u8 infoLog[512];
-    
-    // CREATING VERTEX SHADER
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-    
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    
-    if(!success)
-    {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED | %s \r\n", infoLog);
-        //while(1);
-        Result = 0;
-    }
-    
-    
-    // CREATING FRAGMENT SHADER
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-    
-    // Set Debug log Buffer to Zero
-    for(u32 byte = 0; byte < 512; ++byte){
-        infoLog[byte] = 0;
-    }
-    
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    
-    if(!success)
-    {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED | %s \r\n", infoLog);
-        //while(1);
-        Result = 0;
-    }
-    
-    //printf("FFFFFFFUUUUUUUUUUUCCKKKKKKKKKKKKKKKKKKK!!!!!");
-    // CREATING A SHADER PROGRAM
-    // AND LINKING SHADERS TO IT
-    
-    *shaderProgram = glCreateProgram();
-    
-    glAttachShader(*shaderProgram, vertexShader);
-    glAttachShader(*shaderProgram, fragmentShader);
-    
-    glLinkProgram(*shaderProgram);
-    
-    //  Set Debug log Buffer to Zero
-    for(u32 byte = 0; byte < 512; ++byte){
-        infoLog[byte] = 0;
-    }
-    
-    glGetProgramiv(*shaderProgram, GL_LINK_STATUS, &success);
-    
-    if(!success) {
-        glGetProgramInfoLog(*shaderProgram, 512, NULL, infoLog);
-        printf("ERROR::SHADER_PROGRAM::LINKING_FAILED | %s \r\n", infoLog);
-        Result = 0;
-    }
-    
-    
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader); 
-    
-    return Result;
-}
-
-
-b32
-OpenGL_LoadShaderFromSource(u32 *ShaderProgram, readonly u8 *path, HANDLE File, size_t FileSize)
-{
-    //printf("\n\n************************\n  %s  \n ******************** \n", path);
-    // TODO(MIGUEL): get rid of all this c std library bullshit
-    b32 Result = 0;
-    
 #if 0
-    FILE *File = (void *)0x00;
-    File = fopen(path, "r");
-#endif
-    ASSERT(File);
-    
-    //u32 j = 0;
-    //u32 i = 1;
-    
-    u32 BytesToRead = FileSize;
-    u8 *Shader = calloc( ( BytesToRead + 10 ),  sizeof(u8));
-    
-    ASSERT(Shader);
-    
-    // ZERO INITIALIZATION
-    for(u32 i = 0; i < ( BytesToRead + 10 ); i++)
-    {
-        *(Shader + i) = 0x00;
-    }
-    
-    u32 BytesRead;
-    
-    // WRITE FILE INTO BUFFER
-    for(u32 i = 0; i < BytesToRead; i++)
-    {
-        //*(Shader + i) = fgetc(File);
-        ReadFile(File,
-                 (Shader + i),
-                 1,
-                 &BytesRead,
-                 0);
-    }
-    
-    //printf("\n\n************************\n  %s \nsize: %d \n ******************** \n", path, BytesToRead);
-    //printf("Shader\n %s \n\n", Shader);
-    
-    u32 VSpos = StringMatchKMP(Shader, BytesToRead, VERTSEC) + sizeof(VERTSEC);
-    u32 FSpos = StringMatchKMP(Shader, BytesToRead, FRAGSEC) + sizeof(FRAGSEC);
-    
-    *(Shader + FSpos - sizeof(FRAGSEC) - 1) = '\0';
-    //*(Shader + BytesToRead) = '\0';
-    
-    Result = OpenGL_CreateShaderProgram(Shader + VSpos, Shader + FSpos, ShaderProgram);
-    
-    //printf("========== Vertex Shader\n%s \nDONE\n\n", Shader + VSpos);
-    //printf("========== Fragment Shader\n%s \nDONE\n\n", Shader + FSpos);
-    
-    //printf("String Match: %d \n", StringMatchKMP(Shader, BytesToRead, ENDSEC));
-    //printf("String Match: %d \n", VSpos);
-    //printf("String Match: %d \n", FSpos);
-    
-    //fclose(File);
-    free(Shader);
-    
-    return Result;
-}
-
-
-void OpenGL_LoadTexture(opengl_render_info *Info, b32 should_flip )
+void OpenGLLoadTexture(u32 *ShaderID, opengl_render_info *Info, b32 should_flip )
 {
     // THE AFFECTS OF THIS MIGHT NOT BE APPARENT UNSLESS THERE ARE CERTAIN CONDITIONS
     GL_Call(glGenTextures(1, &Info->TextureID));
@@ -603,4 +152,4 @@ void OpenGL_LoadTexture(opengl_render_info *Info, b32 should_flip )
     
     return;
 }
-
+#endif

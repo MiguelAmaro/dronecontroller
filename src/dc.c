@@ -1,15 +1,11 @@
 #include "dc.h"
 
 #include "dc_math.h"
+#include "dc_ui.h"
 #include "dc_opengl.h"
 #include "dc_entity.h"
 #include <stdio.h>
 #include <math.h>
-
-
-#define ID2(x)   (1+(char *)(x))
-#define ID3(x)   (2+(char *)(x))
-#define ID4(x)   (3+(char *)(x))
 
 
 internaldef
@@ -48,10 +44,10 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
     if(!AppState->IsInitialized)
     {
         
-        UICreateGuage(AppState, v2f32Init(Platform->WindowWidth   / 2.0f,
-                                          Platform->WindowHeight  / 2.0f),
-                      v2f32Init(240.0f, 40.0f),
-                      &AppState->UITextArena);
+        //UICreateGuage(AppState, v2f32Init(Platform->WindowWidth   / 2.0f,
+        //Platform->WindowHeight  / 2.0f),
+        //v2f32Init(240.0f, 40.0f),
+        //&AppState->UITextArena);
         
         AppState->IsInitialized = 1;
     }
@@ -95,6 +91,7 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
     entity *Entity = AppState->Entities;
     for(u32 EntityIndex = 0; EntityIndex < AppState->EntityCount; EntityIndex++, Entity++)
     {
+#if 0
         rect_v2f32 EntityBounds = { 0 };
         
         rect_v2f32_Init(&EntityBounds, &Entity->Dim, &Entity->Pos);
@@ -105,6 +102,9 @@ b32 App_Update(app_backbuffer *Backbuffer, platform *Platform)
         {
             Entity->Pos = NewMousePos;
         }
+#else
+        UIProccessGuage(Entity, AppState->DeltaTime);
+#endif
     }
     
     

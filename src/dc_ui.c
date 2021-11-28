@@ -1,4 +1,6 @@
 #include "dc.h"
+#include "dc_ui.h"
+#include "dc_math.h"
 
 internaldef
 void UIBeginFrame(platform *Platform)
@@ -261,7 +263,7 @@ UIDragY (v2f32 *Pos, v2f32 *Dim, void *ID)
     return Result;
 }
 
-
+#if 0
 internaldef void
 UITextPush(app_state *AppState, memory_arena *Arena,
            str8 String, u32 EntityIndex,
@@ -282,10 +284,10 @@ UITextPush(app_state *AppState, memory_arena *Arena,
     
     return;
 }
-
+#endif
 
 internaldef void
-UIProccessGuages(entity *Entity, float dt)
+UIProccessGuage(entity *Entity, float dt)
 {
     b32 CenterHot;
     int HandleWidth = 5;
@@ -319,35 +321,33 @@ UIProccessGuages(entity *Entity, float dt)
     UIState.IsHot = 0;
     
     // edges first, so corners are on top
-    UIDragX (&EntityRect.min.x,HandleWidth, EntityRect.min.y,EntityRect.max.y,   &EntityRect.min.x);
-    UIDragX (&EntityRect.max.x,HandleWidth, EntityRect.min.y,EntityRect.max.y,   &EntityRect.max.x);
+    //UIDragX (&EntityRect.min.x,HandleWidth, EntityRect.min.y,EntityRect.max.y,   &EntityRect.min.x);
+    //UIDragX (&EntityRect.max.x,HandleWidth, EntityRect.min.y,EntityRect.max.y,   &EntityRect.max.x);
     
-    UIDragY (EntityRect.min.x,EntityRect.max.x, &EntityRect.min.y,HandleWidth,   &EntityRect.min.y);
-    UIDragY (EntityRect.min.x,EntityRect.max.x, &EntityRect.max.y,HandleWidth,   &EntityRect.max.y);
+    //UIDragY (EntityRect.min.x,EntityRect.max.x, &EntityRect.min.y,HandleWidth,   &EntityRect.min.y);
+    //UIDragY (EntityRect.min.x,EntityRect.max.x, &EntityRect.max.y,HandleWidth,   &EntityRect.max.y);
     
     UIState.CurIndex = 1; // change index id so that we can reuse same pointers as new handles
     HandleWidth = 9; // corners have larger handles
     
-    UIDragXY(&EntityRect.min.x,HandleWidth, &EntityRect.min.y,HandleWidth, &EntityRect.min.x);
-    UIDragXY(&EntityRect.max.x,HandleWidth, &EntityRect.min.y,HandleWidth, &EntityRect.min.y);
+    //UIDragXY(&EntityRect.min.x,HandleWidth, &EntityRect.min.y,HandleWidth, &EntityRect.min.x);
+    //UIDragXY(&EntityRect.max.x,HandleWidth, &EntityRect.min.y,HandleWidth, &EntityRect.min.y);
     
-    UIDragXY(&EntityRect.min.x,HandleWidth, &EntityRect.max.y,HandleWidth, &EntityRect.max.y);
-    UIDragXY(&EntityRect.max.x,HandleWidth, &EntityRect.max.y,HandleWidth, &EntityRect.max.x);
+    //UIDragXY(&EntityRect.min.x,HandleWidth, &EntityRect.max.y,HandleWidth, &EntityRect.max.y);
+    //UIDragXY(&EntityRect.max.x,HandleWidth, &EntityRect.max.y,HandleWidth, &EntityRect.max.x);
     UIState.CurIndex = 0;
     
     if (!CenterHot && !UIState.IsHot)
     {
-        Entity->HotAlpha = max(Entity->HotAlpha - 80 * dt, 200);
+        Entity->Color.a = max(Entity->Color.a - 80 * dt, 200);
     }
     else
     {
-        Entity->HotAlpha = min(Entity->HotAlpha + 80 * dt, 255);
+        Entity->Color.a = min(Entity->Color.a + 80 * dt, 255);
     }
     
-    RenderRect(EntityRect.min.x,EntityRect.min.y,
-               EntityRect.max.x,EntityRect.max.y, RGBA(R(EntityRect.c),
-                                                       G(EntityRect.c),
-                                                       B(EntityRect.c), EntityRect.hot_alpha));
+    //RenderRect(EntityRect.min.x,EntityRect.min.y,
+    //EntityRect.max.x,EntityRect.max.y, &Entity->Color);
     
     if (UIState.IsHot)
     { 
@@ -356,24 +356,24 @@ UIProccessGuages(entity *Entity, float dt)
         
         
         
-        RenderRect(EntityRect.min.x  ,EntityRect.min.y  , EntityRect.max.x  ,EntityRect.max.y  , RGB_GREY(0));
-        RenderRect(EntityRect.min.x+1,EntityRect.min.y+1, EntityRect.max.x-1,EntityRect.max.y-1, RGB_GREY(255));
-        RenderRect(EntityRect.min.x+2,EntityRect.min.y+2, EntityRect.max.x-2,EntityRect.max.y-2, RGB_GREY(0));
+        //RenderRect(EntityRect.min.x  ,EntityRect.min.y  , EntityRect.max.x  ,EntityRect.max.y  , RGB_GREY(0));
+        //RenderRect(EntityRect.min.x+1,EntityRect.min.y+1, EntityRect.max.x-1,EntityRect.max.y-1, RGB_GREY(255));
+        //RenderRect(EntityRect.min.x+2,EntityRect.min.y+2, EntityRect.max.x-2,EntityRect.max.y-2, RGB_GREY(0));
     }
     else
     {
-        RenderRect(EntityRect.min.x,EntityRect.min.y, EntityRect.max.x,EntityRect.max.y, RGB_GREY(0));
+        //RenderRect(EntityRect.min.x,EntityRect.min.y, EntityRect.max.x,EntityRect.max.y, RGB_GREY(0));
     }
     
     if (UIState.IsActive)
     {
-        g_SelectedEntity = EntityIndex.Index;
+        g_SelectedEntity = Entity->Index;
     }
     
     return;
 }
 
-
+#if 0
 internaldef void
 UICreateGuage(app_state *AppState, v2f32 Pos, v2f32 Dim, memory_arena *Arena)
 {
@@ -395,3 +395,4 @@ UICreateGuage(app_state *AppState, v2f32 Pos, v2f32 Dim, memory_arena *Arena)
     
     return;
 }
+#endif

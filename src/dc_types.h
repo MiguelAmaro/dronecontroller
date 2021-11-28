@@ -3,6 +3,14 @@
 #ifndef DC_TYPES_H
 #define DC_TYPES_H
 
+#include <stdint.h>
+
+enum
+{
+    true  = 1,
+    false = 0,
+};
+
 #define NULLPTR       ((void *)0x00)
 #define readonly        const
 #define internaldef     static

@@ -23,6 +23,7 @@ struct entity
     v2f32 Pos;
     
     u8 HotAlpha;
+    v4f32 Color;
     
     u32 RenderInfoID;
 };

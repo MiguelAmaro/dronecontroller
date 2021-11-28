@@ -6,7 +6,9 @@ rem ====================    PROJECT/FILES      ====================
 set PROJECT_NAME=dc
 set SOURCES=^
 F:\Dev\DroneController\src\win32_%PROJECT_NAME%.c ^
+F:\Dev\DroneController\src\win32_opengl.c ^
 F:\Dev\DroneController\src\%PROJECT_NAME%_opengl.c ^
+F:\Dev\DroneController\src\%PROJECT_NAME%_memory.c ^
 F:\Dev\DroneController\lib\glad\src\glad.c
 
 rem ====================    COMPILER(MSVC)     ====================

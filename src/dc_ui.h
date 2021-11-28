@@ -5,6 +5,13 @@
 
 #define UITEXT_MAX_COUNT 256
 
+#include "dc_strings.h"
+
+#define ID2(x)   (1 + (u8 *)(x))
+#define ID3(x)   (2 + (u8 *)(x))
+#define ID4(x)   (3 + (u8 *)(x))
+
+
 typedef struct ui_context ui_context;
 struct ui_context
 {
