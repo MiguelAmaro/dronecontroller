@@ -1,6 +1,7 @@
 #include "dc.h"
 #include "dc_ui.h"
 #include "dc_math.h"
+#include "dc_render_commands.h"
 
 internaldef
 void UIBeginFrame(platform *Platform)

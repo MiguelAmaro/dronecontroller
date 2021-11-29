@@ -265,9 +265,9 @@ win32_ProcessPendingMessages(win32_state *State, input_src *Keyboard)
             
             case WM_LBUTTONDOWN: g_Platform.Controls->MouseLeftButtonDown = 1; break;
             case WM_LBUTTONUP  : g_Platform.Controls->MouseLeftButtonDown = 0; break;
-            case WM_RBUTTONDOWN:
-            case WM_RBUTTONUP  :
-            case WM_MOUSEHWHEEL:
+            case WM_RBUTTONDOWN: break;
+            case WM_RBUTTONUP  : break;
+            case WM_MOUSEHWHEEL: break;
             
             case WM_SYSKEYDOWN:
             case WM_SYSKEYUP  :
@@ -277,7 +277,7 @@ win32_ProcessPendingMessages(win32_state *State, input_src *Keyboard)
                 KeyIndex  = 0;
                 
                 KeyCode       = (u32)Message.wParam;
-                KeyIsDown     = ((Message.lParam & (1 << 30)) != 0);
+                KeyIsDown     = ((Message.lParam & (1 << 31)) == 0);
                 KeyWasDown    = ((Message.lParam & (1 << 30)) != 0);
                 KeyAltWasDown = ( Message.lParam & (1 << 29));
                 

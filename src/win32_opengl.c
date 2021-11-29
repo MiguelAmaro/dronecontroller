@@ -164,80 +164,77 @@ OpenGLHotSwapShader(u32 *ShaderID, opengl_shader_file_info *Info)
 
 
 internaldef b32 
-OpenGLCreateShaderProgram(readonly u8* vertexShaderSource, readonly u8* fragmentShaderSource, u32 *shaderProgram)
+OpenGLCreateShaderProgram(readonly u8 *VertShaderSource,
+                          readonly u8 *FragShaderSource,
+                          u32         *ShaderProgram)
 {
     
-    u32 vertexShader   = glCreateShader(GL_VERTEX_SHADER);
-    u32 fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    u32 VertShader = glCreateShader(GL_VERTEX_SHADER);
+    u32 FragShader = glCreateShader(GL_FRAGMENT_SHADER);
     
     b32 Result = 1;
-    s32 success;
-    u8 infoLog[512];
+    s32 Success;
+    u8  DebugLog[512];
     
     // CREATING VERTEX SHADER
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
+    glShaderSource(VertShader, 1, &VertShaderSource, NULL);
+    glCompileShader(VertShader);
     
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    glGetShaderiv(VertShader, GL_COMPILE_STATUS, &Success);
     
-    if(!success)
+    if(!Success)
     {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED | %s \r\n", infoLog);
-        //while(1);
+        glGetShaderInfoLog(VertShader, 512, NULL, DebugLog);
+        printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED | %s \r\n", DebugLog);
+        
         Result = 0;
     }
     
     
     // CREATING FRAGMENT SHADER
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
+    glShaderSource(FragShader, 1, &FragShaderSource, NULL);
+    glCompileShader(FragShader);
     
-    // Set Debug log Buffer to Zero
-    for(u32 byte = 0; byte < 512; ++byte){
-        infoLog[byte] = 0;
-    }
+    MemorySet(DebugLog, ARRAY_SIZE(DebugLog), 0);
     
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    glGetShaderiv(FragShader, GL_COMPILE_STATUS, &Success);
     
-    if(!success)
+    if(!Success)
     {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED | %s \r\n", infoLog);
-        //while(1);
+        glGetShaderInfoLog(FragShader, 512, NULL, DebugLog);
+        printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED | %s \r\n", DebugLog);
+        
         Result = 0;
     }
     
-    *shaderProgram = glCreateProgram();
+    *ShaderProgram = glCreateProgram();
     
-    glAttachShader(*shaderProgram, vertexShader);
-    glAttachShader(*shaderProgram, fragmentShader);
+    glAttachShader(*ShaderProgram, VertShader);
+    glAttachShader(*ShaderProgram, FragShader);
     
-    glLinkProgram(*shaderProgram);
+    glLinkProgram(*ShaderProgram);
     
-    //  Set Debug log Buffer to Zero
-    for(u32 byte = 0; byte < 512; ++byte){
-        infoLog[byte] = 0;
-    }
+    MemorySet(DebugLog, ARRAY_SIZE(DebugLog), 0);
     
-    glGetProgramiv(*shaderProgram, GL_LINK_STATUS, &success);
+    glGetProgramiv(*ShaderProgram, GL_LINK_STATUS, &Success);
     
-    if(!success) {
-        glGetProgramInfoLog(*shaderProgram, 512, NULL, infoLog);
-        printf("ERROR::SHADER_PROGRAM::LINKING_FAILED | %s \r\n", infoLog);
+    if(!Success)
+    {
+        glGetProgramInfoLog(*ShaderProgram, 512, NULL, DebugLog);
+        printf("ERROR::SHADER_PROGRAM::LINKING_FAILED | %s \r\n", DebugLog);
+        
         Result = 0;
     }
     
-    
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader); 
+    glDeleteShader(VertShader);
+    glDeleteShader(FragShader); 
     
     return Result;
 }
 
 
 internaldef b32
-OpenGLLoadShaderFromSource(u32 *ShaderProgram, readonly u8 *path, HANDLE File, size_t FileSize)
+OpenGLLoadShaderFromSource(u32 *ShaderProgram, readonly u8 *ShaderPath, HANDLE File, size_t FileSize)
 {
     b32 Result = 0;
     
@@ -250,25 +247,18 @@ OpenGLLoadShaderFromSource(u32 *ShaderProgram, readonly u8 *path, HANDLE File, s
     
     MemorySet(Shader, (BytesToRead + 10), 0);
     
-    
     // WRITE FILE INTO BUFFER
     u32 BytesRead;
+    ReadFile(File, Shader, BytesToRead, &BytesRead, 0);
     
-    for(u32 i = 0; i < BytesToRead; i++)
-    {
-        ReadFile(File,
-                 (Shader + i),
-                 1,
-                 &BytesRead,
-                 0);
-    }
+    u32 VertShaderIndex = StringMatchKMP(Shader, BytesToRead, VERTSEC) + sizeof(VERTSEC);
+    u32 FragShaderIndex = StringMatchKMP(Shader, BytesToRead, FRAGSEC) + sizeof(FRAGSEC);
     
-    u32 VSpos = StringMatchKMP(Shader, BytesToRead, VERTSEC) + sizeof(VERTSEC);
-    u32 FSpos = StringMatchKMP(Shader, BytesToRead, FRAGSEC) + sizeof(FRAGSEC);
+    *(Shader + FragShaderIndex - sizeof(FRAGSEC) - 1) = '\0';
     
-    *(Shader + FSpos - sizeof(FRAGSEC) - 1) = '\0';
-    
-    Result = OpenGLCreateShaderProgram(Shader + VSpos, Shader + FSpos, ShaderProgram);
+    Result = OpenGLCreateShaderProgram(Shader + VertShaderIndex,
+                                       Shader + FragShaderIndex,
+                                       ShaderProgram);
     
     free(Shader);
     

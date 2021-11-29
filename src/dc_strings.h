@@ -71,24 +71,22 @@ void str8AppendBtoA(str8 *A, u32 ASize, str8 B)
 //- UTILS 
 
 internaldef void 
-BuildPrefixSuffixTable(u32* table, u32 table_size,readonly u8 *SearchTerm)
+BuildPrefixSuffixTable(u32* Table, u32 TableSize, readonly u8 *SearchTerm)
 {
-    //printf("Before: %p \n", table);
-    //printf("Before: %p \n", table);
-    u32* tableOG = table;
+    u32* OriginalTable = Table;
     u32 i = 1;
     u32 j = 0;
     
-    for(u32 i = 0; i < table_size; i++)
+    for(u32 i = 0; i < TableSize; i++)
     {
-        *(table + i) = 0;
+        *(Table + i) = 0;
     }
     
     
-    while(i < (table_size))
+    while(i < (TableSize))
     {
         // LAST ELEMENT
-        if(i == (table_size - 1))
+        if(i == (TableSize - 1))
         {
             if(*(SearchTerm + i) == *(SearchTerm + j) || j == 0)
             {
@@ -96,41 +94,36 @@ BuildPrefixSuffixTable(u32* table, u32 table_size,readonly u8 *SearchTerm)
             }
             while(*(SearchTerm + i) != *(SearchTerm + j) && j != 0)
             {
-                j = *(table + j - 1);
+                j = *(Table + j - 1);
             }
-            *(table + i) = ++j;
+            *(Table + i) = ++j;
             i++;
         }
+        
         // MISMATCH
         else if(*(SearchTerm + i) != *(SearchTerm + j))
         {
-            *(table + i) = j = 0;
+            *(Table + i) = j = 0;
             i++;
-            //printf("Searchi : %c  <- i : %d| Searchj : %c <- j : %d | PSST %d \n", *(SearchTerm + i), i, *(SearchTerm + j), j, *(table + i));
         }
-        // MATCH
         else
         {
-            //printf("Searchi : %c  <- i : %d| Searchj : %c <- j : %d | PSST %d \n", *(SearchTerm + i), i, *(SearchTerm + j), j, *(table + i));
-            j++;
-            *(table + i) = j;
+            *(Table + i) = j;
             i++;
             
         }
     }
     
-    ASSERT(table == tableOG);
+    ASSERT(Table == OriginalTable);
     
     return;
 }
 
-
-// TODO(MIGUEL): Take out file and use u8 * instead
 internaldef u32 
 StringMatchKMP(readonly u8 *Text, readonly u32 BytesToRead, readonly u8 *SearchTerm)
 {
-    // NOTE(MIGUEL): This implemenation only returns the first match!!
     readonly u32 SearchTermLength = strlen(SearchTerm);
+    
     u32 result = 0;
     u32 i = 0;
     u32 j = 0;
@@ -140,30 +133,19 @@ StringMatchKMP(readonly u8 *Text, readonly u32 BytesToRead, readonly u8 *SearchT
     
     ASSERT(Text && table);
     
-    
     BuildPrefixSuffixTable(table , SearchTermLength, SearchTerm);
-    //for(u32 i = 0; i < SearchTermLength ; i++) { printf("%d ", *(table + i));}
-    
-    //printf("Before: %p \n", table);
-    //printf(SearchTerm);
     
     while(i < BytesToRead)
     {
-        //printf("i : %d | j : %d | Text : %c | | Pattern : %c \n",i, j, (u8)*(Text + i), (u8)*(SearchTerm + j));
-        
         // CASE: Match
-        
         if(*(SearchTerm + j) == *(Text + i))
         {
-            i++;
-            j++;
+            i++; j++;
         }
         
         if(j == SearchTermLength)
         {
             result = (i - j);
-            //printf("MATCH: i = %d - %d = j = %d \n", i , j, (i - j));
-            //j = *(table + j - 1);
             break;
         }
         
@@ -171,24 +153,14 @@ StringMatchKMP(readonly u8 *Text, readonly u32 BytesToRead, readonly u8 *SearchT
         
         else if( (i < BytesToRead) && (*(SearchTerm + j) != *(Text + i)))
         {
-            if(j != 0)
-            {
-                j = *(table + j - 1);
-                
-            }
-            else
-            {
-                i++;
-            }
+            if(j != 0) { j = *(table + j - 1); }
+            else       { i++;                  }
         }
     }
-    //printf("MATCH: i = %d - %d = j = %d \n", i , j, (i -j));
-    //printf("After : %p \n", table);
     
     ASSERT(table == tableCopy);
     
     free(table);
-    
     
     return (i - j);
 }

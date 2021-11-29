@@ -3,6 +3,7 @@
 #ifndef DC_RENDER_COMMANDS_H
 #define DC_RENDER_COMMANDS_H
 
+#include "dc_types.h"
 #include "dc_math.h"
 
 typedef struct textured_vertex textured_vertex;
@@ -41,7 +42,7 @@ struct render_command_data_guage
 {
     u32 QuadCount;
     
-    u32 VertexArrayOffset;
+    u32 UntexturedVertArrayOffset;
     u32 IndexArrayOffset ;
     
     v2f32 Pos;
@@ -76,7 +77,7 @@ enum render_command_type
 typedef struct render_command_header render_command_header;
 struct render_command_header
 {
-    render_command_type Type;
+    u32 Type;
 };
 
 typedef struct render_data render_data;
@@ -98,5 +99,7 @@ struct render_data
     u32 IndexMaxCount;
     u32 IndexCount;
 };
+
+void PushGuage(render_data *RenderData, v2f32 Pos, v2f32 Dim, f32 NormThrottlePos);
 
 #endif //DC_RENDER_COMMANDS_H

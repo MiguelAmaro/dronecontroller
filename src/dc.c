@@ -52,11 +52,6 @@ App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderDa
     
     PushClear(RenderData, v4f32Init(0.12f, 0.12f, 0.12f, 1.0f));
     
-    PushGuage(RenderData, v2f32Init(Platform->WindowWidth   / 2.0f,
-                                    Platform->WindowHeight  / 2.0f),
-              v2f32Init(240.0f, 40.0f),
-              Platform->Controls[0].NormThrottlePos);
-    
     UIBeginFrame(Platform);
     
     AppState->DeltaTime += Platform->CurrentTime - Platform->LastTime;
@@ -64,6 +59,7 @@ App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderDa
     
     v2f32 MousePos = v2f32Init(Platform->Controls->MousePos.x,
                                Platform->Controls->MousePos.y);
+    
     // ************************************************
     // INPUT RESPONSE
     //*************************************************
@@ -91,25 +87,36 @@ App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderDa
         Entity->Pos.y  = Platform->WindowHeight / 2.0f;
     }
     
+    v2f32 NewMousePos = v2f32Init(MousePos.x, (f32)Platform->WindowHeight - MousePos.y);
+    
     // ************************************************
     // UPDATE
     //*************************************************
     entity *Entity = AppState->Entities;
     for(u32 EntityIndex = 0; EntityIndex < AppState->EntityCount; EntityIndex++, Entity++)
     {
-#if 0
+        
         rect_v2f32 EntityBounds = { 0 };
         
-        rect_v2f32_Init(&EntityBounds, &Entity->Dim, &Entity->Pos);
+        rect_v2f32Init(&EntityBounds, &Entity->Dim, &Entity->Pos);
         
-        v2f32 NewMousePos = v2f32Init(MousePos.x, (f32)Platform->WindowHeight - MousePos.y);
         
-        if(rect_v2f32_IsInRect(&EntityBounds, &NewMousePos) && Platform->Controls->MouseLeftButtonDown)
+        if(rect_v2f32IsInRect(&EntityBounds, &NewMousePos) && 
+           Platform->Controls->MouseLeftButtonDown)
         {
             Entity->Pos = NewMousePos;
         }
-#else
+        
+        PushGuage(RenderData,
+                  Entity->Pos,
+                  Entity->Dim,
+                  Platform->Controls->NormThrottlePos);
+        
+        
+        
+#if 0
         UIProccessGuage(Entity, AppState->DeltaTime);
+#else
 #endif
     }
     

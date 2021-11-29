@@ -246,7 +246,7 @@ HRESULT win32_DirectInputProcessThrottleInput(controller *Controller, platform *
         return result; // The device should have been acquired during the Poll()
     }
     
-    Platform->Controls->NormThrottlePos = (1.0f - (f32)joystick_state.lZ / (f32)65535.0f);
+    Platform->Controls[0].NormThrottlePos = (1.0f - (f32)joystick_state.lZ / (f32)65535.0f);
     
     return S_OK;
 }

@@ -2,7 +2,8 @@
 
 void PushClear(render_data *RenderData, v4f32 Color)
 {
-    u8 *EndOfCommandBuffer  = (RenderData->RenderCommands + RenderData->RenderCommandsMaxSize);
+    u8 *EndOfCommandBuffer  = (RenderData->RenderCommands + 
+                               RenderData->RenderCommandsMaxSize);
     u8 *CommandPushLocation = (RenderData->RenderCommandsFilledPos +
                                sizeof(render_command_header) + 
                                sizeof(render_command_data_clear));
@@ -26,6 +27,7 @@ void PushClear(render_data *RenderData, v4f32 Color)
     return;
 }
 
+
 void PushGuage(render_data *RenderData, v2f32 Pos, v2f32 Dim, f32 NormThrottlePos)
 {
     untextured_vertex QuadVerts[4] =
@@ -36,9 +38,10 @@ void PushGuage(render_data *RenderData, v2f32 Pos, v2f32 Dim, f32 NormThrottlePo
         { -1.0f,  1.0f },
     };
     
-    u16 QuadIndices[] = { 0, 1, 3, 0, 2, 3 };
+    u16 QuadIndices[] = { 0, 1, 2, 0, 2, 3 };
     
-    u8 *EndOfCommandBuffer  = (RenderData->RenderCommands + RenderData->RenderCommandsMaxSize);
+    u8 *EndOfCommandBuffer  = (RenderData->RenderCommands + 
+                               RenderData->RenderCommandsMaxSize);
     u8 *CommandPushLocation = (RenderData->RenderCommandsFilledPos +
                                sizeof(render_command_header) + 
                                sizeof(render_command_data_guage));
@@ -48,6 +51,7 @@ void PushGuage(render_data *RenderData, v2f32 Pos, v2f32 Dim, f32 NormThrottlePo
         if(((RenderData->UntexturedVertCount + 4) < RenderData->UntexturedVertMaxCount) &&
            ((RenderData->IndexCount          + 6) < RenderData->IndexMaxCount))
         {
+            
             untextured_vertex *UntexturedVertex = (RenderData->UntexturedVerts + 
                                                    RenderData->UntexturedVertCount);
             
@@ -59,24 +63,24 @@ void PushGuage(render_data *RenderData, v2f32 Pos, v2f32 Dim, f32 NormThrottlePo
             MemoryCopy(QuadIndices, sizeof(u16) * 6,
                        Indices    , sizeof(u16) * 6);
             
-            RenderData->UntexturedVertCount += 4;
-            RenderData->IndexCount          += 6;
-            
             render_command_header *CommandHeader;
             
             CommandHeader = (render_command_header *)(RenderData->RenderCommandsFilledPos);
             CommandHeader->Type = RenderCommand_Guage;
             
             render_command_data_guage *Data;
-            Data = (render_command_data_guage *)(CommandHeader + sizeof(render_command_header));
+            Data = (render_command_data_guage *)((u8 *)CommandHeader +
+                                                 sizeof(render_command_header));
             
             Data->QuadCount = 1;
-            Data->VertexArrayOffset = RenderData->UntexturedVertCount;
-            Data->IndexArrayOffset  = RenderData->IndexCount;
+            Data->UntexturedVertArrayOffset = RenderData->UntexturedVertCount;
+            Data->IndexArrayOffset          = RenderData->IndexCount;
             Data->Dim = Dim;
             Data->Pos = Pos;
             Data->NormThrottlePos = NormThrottlePos;
             
+            RenderData->UntexturedVertCount += 4;
+            RenderData->IndexCount          += 6;
             RenderData->RenderCommandsFilledPos = CommandPushLocation;
         }
     }
