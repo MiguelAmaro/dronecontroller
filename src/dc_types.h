@@ -5,6 +5,10 @@
 
 #include <stdint.h>
 
+
+#define ASSERT(Expression) if(!(Expression)){ *(u32 *)0x00 = 0; }
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
+
 enum
 {
     true  = 1,

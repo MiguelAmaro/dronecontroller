@@ -174,7 +174,7 @@ win32_SerialPort_CloseDevice(device *Device, win32_state *Win32State)
 void
 win32_SerialPort_RecieveData(device *Device)
 {
-#if 0
+#if 1
     telem_packet TelemetryPacket = { 0 };
     
     DWORD BytesToRead = 0;

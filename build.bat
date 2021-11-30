@@ -9,6 +9,7 @@ F:\Dev\DroneController\src\win32_%PROJECT_NAME%.c ^
 F:\Dev\DroneController\src\win32_opengl.c ^
 F:\Dev\DroneController\src\%PROJECT_NAME%_opengl.c ^
 F:\Dev\DroneController\src\%PROJECT_NAME%_memory.c ^
+F:\Dev\DroneController\src\%PROJECT_NAME%_strings.c ^
 F:\Dev\DroneController\src\%PROJECT_NAME%_render_commands.c ^
 F:\Dev\DroneController\lib\glad\src\glad.c
 

@@ -3,7 +3,7 @@
 #version 460 core
 layout(location = 0) in vec2 vertex;
 
-layout(location = 2)uniform mat4 Transform;
+uniform mat4 Transform;
 
 
 void main()

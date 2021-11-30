@@ -88,80 +88,53 @@ void PushGuage(render_data *RenderData, v2f32 Pos, v2f32 Dim, f32 NormThrottlePo
     return;
 }
 
-#if 0
-void RenderLabel(render_data *RenderData, glyph_hash *GlyphHash,
-                 str8 String, v2f32 Pos, f32 Scale, v3f32 Color)
+void PushLabel(render_data *RenderData,
+               str8 String, v2f32 Pos, f32 Scale, v3f32 Color)
 {
-    u8 *EndOfCommandBuffer  = (RenderData->RenderCommands + RenderData->RenderCommandsMaxSize);
+    // NOTE(MIGUEL): For now this function simply reserves memory for the 
+    //               the vertices, dispatches a string and leaves it up to 
+    //               the renderer to initialize the values.
+    
+    
+    u16 QuadIndices[] = { 0, 1, 2, 0, 2, 3 };
+    
+    u8 *EndOfCommandBuffer  = (RenderData->RenderCommands + 
+                               RenderData->RenderCommandsMaxSize);
     u8 *CommandPushLocation = (RenderData->RenderCommandsFilledPos +
                                sizeof(render_command_header) + 
                                sizeof(render_command_data_label));
     
     if(CommandPushLocation < EndOfCommandBuffer)
     {
-        u32 VertexCountAfterPush = (RenderData->TexturedVertCount + 4) * String.Count;
-        u32 IndexCountAfterPush  = (RenderData->IndexCount        + 6) * String.Count;
+        u32 VertexCountAfterPush = RenderData->TexturedVertCount + (4 * String.Count);
+        u32 IndexCountAfterPush  = RenderData->IndexCount        + (6 * String.Count);
         
         if((VertexCountAfterPush < RenderData->TexturedVertMaxCount) &&
            (IndexCountAfterPush  < RenderData->IndexMaxCount))
         {
-            for (u32 Index = 0; Index < String.Count; Index++)
-            {
-                u32 Char = String.Data[Index];
-                glyph Glyph;// = GlyphHashTableLookup(GlyphHash, Char);
-                
-                float xpos = Pos.x + Glyph.Bearing.x * Scale;
-                float ypos = Pos.y - (Glyph.Dim.y - Glyph.Bearing.y) * Scale;
-                
-                float w = Glyph.Dim.x * Scale;
-                float h = Glyph.Dim.y * Scale;
-                
-                float QuadVerts[6][4] =
-                {
-                    { xpos,     ypos + h,   0.0f, 0.0f },            
-                    { xpos,     ypos,       0.0f, 1.0f },
-                    { xpos + w, ypos,       1.0f, 1.0f },
-                    
-                    { xpos,     ypos + h,   0.0f, 0.0f },
-                    { xpos + w, ypos,       1.0f, 1.0f },
-                    { xpos + w, ypos + h,   1.0f, 0.0f }           
-                };
-                
-                u16 QuadIndices[] = { 0, 1, 3, 0, 2, 3 };
-                
-                textured_vertex *TexturedVertex = (RenderData->TexturedVerts + 
-                                                   RenderData->TexturedVertCount);
-                
-                u16 *Indices = RenderData->Indices + RenderData->IndexCount;
-                
-                MemoryCopy(QuadVerts     , sizeof(textured_vertex) * 4,
-                           TexturedVertex, sizeof(textured_vertex) * 4);
-                
-                MemoryCopy(QuadIndices, sizeof(u16) * 6,
-                           Indices    , sizeof(u16) * 6);
-                
-                RenderData->UntexturedVertCount += 4;
-                RenderData->IndexCount          += 6;
-            }
             
             render_command_header *CommandHeader;
             
             CommandHeader = (render_command_header *)(RenderData->RenderCommandsFilledPos);
-            CommandHeader->Type = RenderCommand_Guage;
+            CommandHeader->Type = RenderCommand_Label;
             
             render_command_data_label *Data;
-            Data = (render_command_data_label *)(CommandHeader + sizeof(render_command_header));
+            Data = (render_command_data_label *)((u8 *)CommandHeader +
+                                                 sizeof(render_command_header));
             
             Data->QuadCount = String.Count;
-            Data->VertexArrayOffset = RenderData->UntexturedVertCount;
+            Data->TexturedVertArrayOffset = RenderData->TexturedVertCount;
             Data->IndexArrayOffset  = RenderData->IndexCount;
             Data->Pos    = Pos;
-            Data->String = String.Data;
+            Data->Scale  = Scale;
+            Data->String = String;
+            Data->Color  = v4f32Init(Color.x, Color.y, Color.x, 1.0f);
             
+            RenderData->TexturedVertCount += (4 * String.Count);
+            RenderData->IndexCount        += (6 * String.Count);
             RenderData->RenderCommandsFilledPos = CommandPushLocation;
         }
     }
     
     return;
 }
-#endif

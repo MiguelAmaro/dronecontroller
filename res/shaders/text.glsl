@@ -1,21 +1,22 @@
 
 //~VERT SHADER
 #version 460 core
-layout(location = 0) in vec4 vertex; // (vec2: pos | vec2: tex)
-layout(location = 2)uniform mat4 Transform;
+layout(location = 0) in vec4 Vertex; // (vec2: pos | vec2: tex)
+
+uniform mat4 Transform;
 
 out vec2 TexCoords;
 
 void main()
 {
     
-    vec4 NewPos = Transform * vec4(vertex.xy, 0.0f, 1.0f);
+    vec4 NewPos = Transform * vec4(Vertex.xy, 0.0f, 1.0f);
     // This is because my projection matix fuck with
     // z values for some reason.
     NewPos.z = 0.0f;
-    TexCoords = vertex.zw;
     
     gl_Position = NewPos;
+    TexCoords   = Vertex.zw;
 }
 
 
@@ -23,7 +24,6 @@ void main()
 #version 460 core
 
 out vec4 FragColor;
-uniform float ThrottleValue;
 uniform vec2  UISize;
 uniform vec2  UIPos;
 uniform vec2  WindowSize;

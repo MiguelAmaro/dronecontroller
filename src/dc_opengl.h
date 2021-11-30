@@ -20,9 +20,9 @@ struct opengl_shader_guage
     u32 UIDThrottle;
     u32 UIDColor;
     u32 UIDInput;
-    u32 UIDThrottleSize     ;
-    u32 UIDThrottlePos      ;
-    u32 UIDThrottleTransform;
+    u32 UIDSize     ;
+    u32 UIDPos      ;
+    u32 UIDTransform;
     
     opengl_shader_file_info FileInfo;
 };
@@ -38,7 +38,7 @@ struct opengl_shader_label
     u32 UIDDeltaTime        ;
     
     u32 UIDProjection;
-    u32 UIDThrottleTransform;
+    u32 UIDTransform;
     
     opengl_shader_file_info FileInfo;
 };
@@ -61,6 +61,8 @@ struct opengl_renderer
     u32 TexturedVertAttribID;
     
     u32 IndexBufferID; // NOTE(MIGUEL): shared
+    
+    u32 TexturedIndexBufferID; // NOTE(MIGUEL): shared
     
     
     //u32 TextureID;

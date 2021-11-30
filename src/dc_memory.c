@@ -37,14 +37,18 @@ MemorySet(void *SrcBuffer, u32 SrcSize, u32 Value)
 
 //- ARENAS 
 
-void
+memory_arena
 MemoryArenaInit(memory_arena *Arena, size_t Size, void *BasePtr)
 {
-    Arena->BasePtr = BasePtr;
-    Arena->Size    = Size;
-    Arena->Used    = 0;
+    memory_arena Result;
     
-    return;
+    Result.BasePtr = BasePtr;
+    Result.Size    = Size;
+    Result.Used    = 0;
+    
+    if(Arena) { *Arena = Result; }
+    
+    return Result;
 }
 
 void
@@ -61,7 +65,7 @@ MemoryArenaDiscard(memory_arena *Arena)
     return;
 }
 
-inline void *
+void *
 MemoryArenaPushBlock(memory_arena *Arena, size_t Size)
 {
     ASSERT((Arena->Used + Size) <= Arena->Size);

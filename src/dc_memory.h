@@ -18,4 +18,14 @@ struct memory_arena
 #define MEMORY_ARENA_PUSH_ARRAY( Arena, Count, Type) (Type *)MemoryArenaPushBlock(Arena, (Count) * sizeof(Type))
 #define MEMORY_ARENA_ZERO_STRUCT(Instance          )         MemoryArenaZeroBlock(sizeof(Instance), &(Instance))
 
+
+memory_arena
+MemoryArenaInit(memory_arena *Arena, size_t Size, void *BasePtr);
+
+void *
+MemoryArenaPushBlock(memory_arena *Arena, size_t Size);
+
+void
+MemoryArenaZeroBlock(size_t size, void *address);
+
 #endif //DC_MEMORY_H

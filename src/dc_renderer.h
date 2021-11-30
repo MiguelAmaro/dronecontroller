@@ -8,11 +8,62 @@
 #include "dc_render_commands.h"
 #include "dc_opengl.h"
 
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
+
 typedef struct render_constraints render_constraints;
 struct render_constraints
 {
     u32 QuadMaxCountPerFrame;
 };
+
+//- GLYPH STORAGE 
+#define GLYPH_MAX_COUNT 256
+
+typedef struct glyph glyph;
+struct glyph
+{
+    u32   CharIndex;
+    u32   TexID  ;
+    v2s32 Dim    ;
+    v2s32 Bearing;
+    u32   Advance;
+};
+
+typedef struct glyph_hash glyph_hash;
+struct glyph_hash
+{
+    u32   Count;
+    u32   MaxCount;
+    u32   CharIndex[GLYPH_MAX_COUNT];
+    u32   TexID    [GLYPH_MAX_COUNT];
+    v2s32 Dim      [GLYPH_MAX_COUNT];
+    v2s32 Bearing  [GLYPH_MAX_COUNT];
+    u32   Advance  [GLYPH_MAX_COUNT];
+    //u32   TexelSize[256];
+    //u8    BitmapStore[65536];
+};
+
+glyph_hash GlyphHash;
+
+void
+GlyphHashTableInit(glyph_hash *GlyphHash);
+
+glyph
+GlyphHashTableInsert(glyph_hash *GlyphHash,
+                     u32   CharIndex,
+                     u32   TextureID,
+                     v2s32 Dim,
+                     v2s32 Bearing,
+                     u32   Advance);
+
+glyph
+GlyphHashTableLookup(glyph_hash *GlyphHash, u32   CharIndex);
+
+void
+GlyphHashTableFill(glyph_hash *GlyphHash);
+
 
 opengl_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, render_constraints *Constraints)
 {
@@ -75,25 +126,48 @@ opengl_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, re
     
     OpenGLRenderer->RenderData = RenderData;
     
-    opengl_shader_guage *GuageShader = &OpenGLRenderer->GuageShader;
-    opengl_shader_label *LabelShader = &OpenGLRenderer->LabelShader;
-    
     //-/ UNTEXUTRED VERTEX
     OPENGL_DBG(glGenVertexArrays(1, &OpenGLRenderer->UntexturedVertAttribID));
-    OPENGL_DBG(glBindVertexArray(    OpenGLRenderer->UntexturedVertAttribID));
     OPENGL_DBG(glGenBuffers     (1, &OpenGLRenderer->UntexturedVertBufferID));
-    /*
-    OPENGL_DBG(glEnableVertexAttribArray((OpenGLRenderer->UntexturedVertAttribID)));
+    OPENGL_DBG(glBindVertexArray(    OpenGLRenderer->UntexturedVertAttribID));
+    OPENGL_DBG(glGenBuffers(1, &OpenGLRenderer->IndexBufferID));
+    OPENGL_DBG(glEnableVertexAttribArray(0));
     OPENGL_DBG(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(v2f32), (GLvoid *)0));
-    */
     
     //-/ TEXUTURED VERTEX
     OPENGL_DBG(glGenVertexArrays(1, &OpenGLRenderer->TexturedVertAttribID));
     OPENGL_DBG(glBindVertexArray(    OpenGLRenderer->TexturedVertAttribID));
     OPENGL_DBG(glGenBuffers     (1, &OpenGLRenderer->TexturedVertBufferID));
+    OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, OpenGLRenderer->TexturedVertBufferID)); 
+    OPENGL_DBG(glBufferData(GL_ARRAY_BUFFER,
+                            RenderData.TexturedVertMaxCount * sizeof(textured_vertex),
+                            0,
+                            GL_DYNAMIC_DRAW));
     
-    OPENGL_DBG(glGenBuffers(1, &OpenGLRenderer->IndexBufferID));
+    /// POS & TEXCOORD ATTRIB
+    OPENGL_DBG(glEnableVertexAttribArray(0));
+    OPENGL_DBG(glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 2 * sizeof(v2f32), (GLvoid *)(sizeof(v2f32))));
+    OPENGL_DBG(glBindVertexArray(0));
     
+#if 0
+    /// POSITION ATTRIB
+    OPENGL_DBG(glEnableVertexAttribArray(0));
+    OPENGL_DBG(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(v2f32), (GLvoid *)0));
+    /// TEXCOORD ATTRIB
+    OPENGL_DBG(glEnableVertexAttribArray(1));
+    OPENGL_DBG(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(v2f32), (GLvoid *)(sizeof(v2f32))));
+#endif
+    u16 QuadIndices[] = { 0, 1, 3, 0, 2, 3 };
+    
+    OPENGL_DBG(glGenBuffers(1, &OpenGLRenderer->TexturedIndexBufferID));
+    OPENGL_DBG(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, OpenGLRenderer->TexturedIndexBufferID)); 
+    OPENGL_DBG(glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                            ARRAY_SIZE(QuadIndices)* sizeof(u16),
+                            QuadIndices,
+                            GL_STATIC_DRAW));
+    
+    opengl_shader_guage *GuageShader = &OpenGLRenderer->GuageShader;
+    opengl_shader_label *LabelShader = &OpenGLRenderer->LabelShader;
     
     ASSERT(OpenGLCreateShader(&GuageShader->ID,
                               &GuageShader->FileInfo,
@@ -105,17 +179,20 @@ opengl_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, re
                               "../res/shaders/text.glsl",
                               sizeof("../res/shaders/text.glsl")));
     
-    GuageShader->UIDThrottle          = glGetUniformLocation(GuageShader->ID, "ThrottleValue"  );
-    GuageShader->UIDWindowSize        = glGetUniformLocation(GuageShader->ID, "WindowSize"  );
-    GuageShader->UIDDeltaTime         = glGetUniformLocation(GuageShader->ID, "DeltaTime"  );
-    GuageShader->UIDThrottleSize      = glGetUniformLocation(GuageShader->ID, "UISize"  );
-    GuageShader->UIDThrottlePos       = glGetUniformLocation(GuageShader->ID, "UIPos"  );
-    GuageShader->UIDThrottleTransform = glGetUniformLocation(GuageShader->ID, "Transform"  );
+    GuageShader->UIDThrottle   = glGetUniformLocation(GuageShader->ID, "ThrottleValue"  );
+    GuageShader->UIDWindowSize = glGetUniformLocation(GuageShader->ID, "WindowSize"  );
+    GuageShader->UIDDeltaTime  = glGetUniformLocation(GuageShader->ID, "DeltaTime"  );
+    GuageShader->UIDSize       = glGetUniformLocation(GuageShader->ID, "UISize"  );
+    GuageShader->UIDPos        = glGetUniformLocation(GuageShader->ID, "UIPos"  );
+    GuageShader->UIDTransform  = glGetUniformLocation(GuageShader->ID, "Transform"  );
     
     
-    LabelShader->UIDWindowSize        = glGetUniformLocation(LabelShader->ID, "WindowSize"  );
-    LabelShader->UIDDeltaTime         = glGetUniformLocation(LabelShader->ID, "DeltaTime"  );
+    LabelShader->UIDWindowSize = glGetUniformLocation(LabelShader->ID, "WindowSize"  );
+    LabelShader->UIDDeltaTime  = glGetUniformLocation(LabelShader->ID, "DeltaTime"  );
+    LabelShader->UIDTransform  = glGetUniformLocation(LabelShader->ID, "Transform"  );
     
+    GlyphHashTableInit(&GlyphHash);
+    GlyphHashTableFill(&GlyphHash);
     
     return OpenGLRenderer;
 }
@@ -149,12 +226,6 @@ void RendererEndFrame(opengl_renderer *OpenGL)
     OPENGL_DBG(glBufferData(GL_ARRAY_BUFFER,
                             RenderData->UntexturedVertCount * sizeof(untextured_vertex),
                             RenderData->UntexturedVerts,
-                            GL_STREAM_DRAW));
-    
-    OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, OpenGL->TexturedVertBufferID)); 
-    OPENGL_DBG(glBufferData(GL_ARRAY_BUFFER,
-                            RenderData->TexturedVertCount * sizeof(textured_vertex),
-                            RenderData->TexturedVerts,
                             GL_STREAM_DRAW));
     
     OPENGL_DBG(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, OpenGL->IndexBufferID)); 
@@ -205,28 +276,31 @@ void RendererEndFrame(opengl_renderer *OpenGL)
                 m4f32 Rotate = m4f32Identity();
                 
                 m4f32 World          = m4f32Multiply(Scale, Trans);
-                m4f32 GuageTransform = m4f32Multiply(World, OrthoProjection);
-                
-                opengl_shader_guage *GuageShader = &OpenGL->GuageShader;
+                m4f32 Transform = m4f32Multiply(World, OrthoProjection);
                 
                 v2f32 WindowDim = v2f32Init(OpenGL->WindowWidth, OpenGL->WindowHeight);
                 
-                OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, OpenGL->UntexturedVertBufferID));
+                
+                
+                opengl_shader_guage *GuageShader = &OpenGL->GuageShader;
+                OPENGL_DBG(glUseProgram(GuageShader->ID));
+                
+                OPENGL_DBG(glBindVertexArray(OpenGL->UntexturedVertAttribID));
+                OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER,  OpenGL->UntexturedVertBufferID));
                 OPENGL_DBG(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, OpenGL->IndexBufferID));
                 
-                /// POSITION ATTRIB
-                OPENGL_DBG(glEnableVertexAttribArray((0)));
+                
+                // POSITION ATTRIB
+                OPENGL_DBG(glEnableVertexAttribArray(0));
                 OPENGL_DBG(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(v2f32), (GLvoid *)0));
                 
-                
-                OPENGL_DBG(glUseProgram(GuageShader->ID));
                 
                 OPENGL_DBG(glUniform2fv(GuageShader->UIDWindowSize  , 1, WindowDim.c));
                 OPENGL_DBG(glUniform1f (GuageShader->UIDDeltaTime   ,    OpenGL->DeltaTime));
                 OPENGL_DBG(glUniform1f (GuageShader->UIDThrottle    ,    GuageData->NormThrottlePos));
-                OPENGL_DBG(glUniform2fv(GuageShader->UIDThrottlePos , 1, GuageData->Pos.c));
-                OPENGL_DBG(glUniform2fv(GuageShader->UIDThrottleSize, 1, GuageData->Dim.c));
-                OPENGL_DBG(glUniformMatrix4fv(GuageShader->UIDThrottleTransform, 1, 0, GuageTransform.e));
+                OPENGL_DBG(glUniform2fv(GuageShader->UIDPos , 1, GuageData->Pos.c));
+                OPENGL_DBG(glUniform2fv(GuageShader->UIDSize, 1, GuageData->Dim.c));
+                OPENGL_DBG(glUniformMatrix4fv(GuageShader->UIDTransform, 1, 0, Transform.e));
                 
                 OPENGL_DBG(glEnable(GL_BLEND));
                 OPENGL_DBG(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
@@ -236,10 +310,12 @@ void RendererEndFrame(opengl_renderer *OpenGL)
                                                     GL_UNSIGNED_SHORT,
                                                     (GLvoid *)(GuageData->IndexArrayOffset * sizeof(u16)),
                                                     GuageData->UntexturedVertArrayOffset));
+                //OPENGL_DBG(glDisableVertexAttribArray(0));
+                OPENGL_DBG(glBindVertexArray(0));
+                OPENGL_DBG(glUseProgram(0));
             } break;
             case RenderCommand_Label:
             {
-#if 0
                 CurrentCommandHeaderPos += (sizeof(render_command_header) + 
                                             sizeof(render_command_data_label));
                 
@@ -247,53 +323,76 @@ void RendererEndFrame(opengl_renderer *OpenGL)
                     ((render_command_data_label *)((u8 *)CommandHeader + 
                                                    sizeof(render_command_header)));
                 
-                glEnable(GL_CULL_FACE);
-                glEnable(GL_BLEND);
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                
-                m4f32 GlyphProjection = m4f32Orthographic(0.0f, OpenGL->WindowWidth,
-                                                          0.0f, OpenGL->WindowHeight,
-                                                          0.1f, 100.0f);
-                
-                m4f32 GlyphTransform = GlyphProjection;
+                str8  String = LabelData->String;
+                v2f32 Pos    = LabelData->Pos;
+                f32   Scale  = LabelData->Scale;
                 
                 opengl_shader_label *LabelShader = &OpenGL->LabelShader;
-                
-                
                 OPENGL_DBG(glUseProgram(LabelShader->ID));
                 
-                OPENGL_DBG(glUniformMatrix4fv(LabelShader->UIDThrottleTransform, 1, 0, GlyphTransform.e));
+                OPENGL_DBG(glUniformMatrix4fv(LabelShader->UIDTransform, 1, 0, OrthoProjection.e));
                 OPENGL_DBG(glUniform3f(glGetUniformLocation(LabelShader->ID, "TextColor"),
                                        LabelData->Color.x,
                                        LabelData->Color.y,
                                        LabelData->Color.z));
                 
                 OPENGL_DBG(glActiveTexture(GL_TEXTURE0));
-                OPENGL_DBG(glBindVertexArray(OpenGL->IndexBufferID));
                 
-                
-                /// POSITION ATTRIB
-                OPENGL_DBG(glEnableVertexAttribArray(0));
-                OPENGL_DBG(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(v2f32), (GLvoid *)0));
-                /// TEXCOORD ATTRIB
-                OPENGL_DBG(glEnableVertexAttribArray(1));
-                OPENGL_DBG(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(v2f32), (GLvoid *)(2 * sizeof(f32))));
-                
-                
-                // render glyph texture over quad
-                //OPENGL_DBG(glBindTexture(GL_TEXTURE_2D, Glyph.TexID));
-                // update content of VBO memory
-                OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, OpenGL->IndexBufferID));
-                //glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices); 
-                OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, 0));
-                // render quad
-                OPENGL_DBG(glDrawArrays(GL_TRIANGLES, 0, 6));
-                // now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-                //x += (Glyph.Advance >> 6) * Scale; // bitshift by 6 to get value in pixels (2^6 = 64)
-                
-                OPENGL_DBG(glBindVertexArray(0));
-                OPENGL_DBG(glBindTexture(GL_TEXTURE_2D, 0));
+                for (u32 Index = 0; Index < String.Count; Index++)
+                {
+                    u32 Char = String.Data[Index];
+                    glyph Glyph = GlyphHashTableLookup(&GlyphHash, Char);
+                    
+                    float xpos = Pos.x + Glyph.Bearing.x * Scale;
+                    float ypos = Pos.y - (Glyph.Dim.y - Glyph.Bearing.y) * Scale;
+                    
+                    float w = Glyph.Dim.x * Scale;
+                    float h = Glyph.Dim.y * Scale;
+                    
+#if 0
+                    // TODO(MIGUEL): Use indexed Vertices instead. Only After
+                    //               implementing a simple IMUI and rendering 
+                    //               api. Not a priority.
+                    textured_vertex QuadVerts[4] =
+                    {
+                        { xpos + w, ypos + h,   1.0f, 0.0f },
+                        { xpos + w, ypos,       1.0f, 1.0f },
+                        { xpos,     ypos,       0.0f, 1.0f },
+                        { xpos,     ypos + h,   0.0f, 0.0f },            
+                    };
+                    u16 QuadIndices[6] = { 0, 1, 2, 0, 2, 3 };
+                    //OPENGL_DBG(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0));
+#else
+                    float vertices[6][4] = {
+                        { xpos,     ypos + h,   0.0f, 0.0f },
+                        { xpos,     ypos,       0.0f, 1.0f },
+                        { xpos + w, ypos,       1.0f, 1.0f },
+                        
+                        { xpos,     ypos + h,   0.0f, 0.0f },            
+                        { xpos + w, ypos,       1.0f, 1.0f },
+                        { xpos + w, ypos + h,   1.0f, 0.0f }           
+                    };
 #endif
+                    
+                    glBindTexture(GL_TEXTURE_2D, Glyph.TexID);
+                    
+                    glBindVertexArray(OpenGL->TexturedVertAttribID);
+                    
+                    //POSITION ATTRIB
+                    OPENGL_DBG(glEnableVertexAttribArray(0));
+                    OPENGL_DBG(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 2 * sizeof(v2f32), (GLvoid *)0));
+                    
+                    OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER, OpenGL->TexturedVertBufferID));
+                    OPENGL_DBG((glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices)));
+                    
+                    OPENGL_DBG(glDrawArrays (GL_TRIANGLES, 0, 6));
+                    
+                    Pos.x += (Glyph.Advance >> 6) * Scale;
+                }
+                
+                glBindVertexArray(0);
+                glBindTexture(GL_TEXTURE_2D, 0);
+                OPENGL_DBG(glUseProgram(0));
             } break;
         }
     }
@@ -302,5 +401,146 @@ void RendererEndFrame(opengl_renderer *OpenGL)
     
     return;
 }
+
+
+void
+GlyphHashTableInit(glyph_hash *GlyphHash)
+{
+    GlyphHash->Count    = 0;
+    GlyphHash->MaxCount = GLYPH_MAX_COUNT;
+    
+    MemorySet(GlyphHash->CharIndex);
+    MemorySet(GlyphHash->TexID);
+    MemorySet(GlyphHash->Dim);
+    MemorySet(GlyphHash->Bearing);
+    MemorySet(GlyphHash->Advance);
+    
+    return;
+}
+
+glyph
+GlyphHashTableInsert(glyph_hash *GlyphHash,
+                     u32   CharIndex,
+                     u32   TextureID,
+                     v2s32 Dim,
+                     v2s32 Bearing,
+                     u32   Advance)
+{
+    u32 GlyphHashIndex = CharIndex % GlyphHash->MaxCount;
+    
+    glyph Found = { 0 };
+    
+    
+    for(u32 NumVisited = 0;  NumVisited < GlyphHash->MaxCount; NumVisited++)
+    {
+        u32 Index = (GlyphHashIndex + NumVisited) % GlyphHash->MaxCount;
+        
+        if(GlyphHash->CharIndex[Index] == 0)
+        {
+            GlyphHash->CharIndex[Index] = CharIndex;
+            GlyphHash->TexID    [Index] = TextureID;
+            GlyphHash->Dim      [Index] = Dim;
+            GlyphHash->Bearing  [Index] = Bearing;
+            GlyphHash->Advance  [Index] = Advance;
+            break;
+        }
+    }
+    
+    return Found;
+}
+
+glyph
+GlyphHashTableLookup(glyph_hash *GlyphHash, u32   CharIndex)
+{
+    u32 GlyphHashIndex = CharIndex % GlyphHash->MaxCount;
+    
+    glyph Found = { 0 };
+    
+    for(u32 NumVisited = 0;  NumVisited < GlyphHash->MaxCount; NumVisited++)
+    {
+        u32 Index = (GlyphHashIndex + NumVisited) % GlyphHash->MaxCount;
+        
+        if(GlyphHash->CharIndex[Index] == CharIndex)
+        {
+            Found.CharIndex = GlyphHash->CharIndex[Index];
+            Found.TexID     = GlyphHash->TexID  [Index];
+            Found.Dim       = GlyphHash->Dim    [Index];
+            Found.Bearing   = GlyphHash->Bearing[Index];
+            Found.Advance   = GlyphHash->Advance[Index];
+            
+            break;
+        }
+    }
+    
+    
+    return Found;
+}
+
+void
+GlyphHashTableFill(glyph_hash *GlyphHash)
+{
+    // NOTE(MIGUEL): Move this to app state maybe?
+    FT_Library ft;
+    if (FT_Init_FreeType(&ft))
+    {
+        OutputDebugString("FreeType Error: Could not init FreeType Library");
+        ASSERT(0);
+    }
+    
+    FT_Face Face;
+    if (FT_New_Face(ft, "..\\res\\fonts\\cour.ttf", 0, &Face))
+    {
+        OutputDebugString("FreeType Error: Could not load Font");
+        ASSERT(0);
+    }
+    
+    FT_Set_Pixel_Sizes(Face, 0, 48);
+    
+    // disable byte-alignment restriction
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    
+    for(u32 CharIndex = 0; CharIndex < GLYPH_MAX_COUNT; CharIndex++)
+    {
+        if (FT_Load_Char(Face, CharIndex, FT_LOAD_RENDER))
+        {
+            OutputDebugString("FreeType Error: Could not load Glyph");
+            ASSERT(0);
+            continue;
+        }
+        
+        u32 TextureID;
+        glGenTextures(1, &TextureID);
+        glBindTexture(GL_TEXTURE_2D, TextureID);
+        glTexImage2D(GL_TEXTURE_2D,
+                     0,
+                     GL_RED,
+                     Face->glyph->bitmap.width,
+                     Face->glyph->bitmap.rows,
+                     0,
+                     GL_RED,
+                     GL_UNSIGNED_BYTE,
+                     Face->glyph->bitmap.buffer);
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        
+        GlyphHashTableInsert(GlyphHash,
+                             CharIndex,
+                             TextureID,
+                             v2s32Init(Face->glyph->bitmap.width, Face->glyph->bitmap.rows),
+                             v2s32Init(Face->glyph->bitmap_left , Face->glyph->bitmap_top),
+                             Face->glyph->advance.x);
+    }
+    
+    glBindTexture(GL_TEXTURE_2D, 0);
+    
+    FT_Done_Face(Face);
+    FT_Done_FreeType(ft);
+    
+    return;
+}
+
 
 #endif //DC_RENDERER_H

@@ -27,9 +27,13 @@ https://github.com/grassator/win32-window-custom-titlebar
 *Graphics Resources:*
 *    http://www.songho.ca/opengl/gl_transform.html 
 *    http://davidlively.com/programming/graphics/opengl-matrices/row-major-vs-column-major/   
-*     http://www.songho.ca/opengl/gl_matrix.html                                                                               
+*    http://www.songho.ca/opengl/gl_matrix.html                                                                               
 
-*IMGui*
+
+*OpenGL:*
+*    https://web.archive.org/web/20150225192608/http://www.arcsynthesis.org/gltut/Positioning/Tutorial%2005.html
+
+*IMGui:*
 *    http://silverspaceship.com/inner/imgui/
 *    https://www.youtube.com/watch?v=Z1qyvQsjK5Y          
 

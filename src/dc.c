@@ -1,6 +1,7 @@
 #include "dc.h"
 
 #include "dc_math.h"
+#include "dc_strings.h"
 #include "dc_ui.h"
 #include "dc_opengl.h"
 #include "dc_entity.h"
@@ -33,14 +34,18 @@ App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderDa
 {
     app_state *AppState = (app_state *)Platform->PermanentStorage;
     
-    // MEMORY
-    MemoryArenaInit(&AppState->UITextArena,
-                    MEGABYTES(10),
-                    Platform->TransientStorage);
+    //~ MEMORY & INITIALIZATION
+    memory_arena TextArena = MemoryArenaInit(0, MEGABYTES(10),
+                                             Platform->TransientStorage);
+    
+    v2f32 MousePos = v2f32Init(Platform->Controls->MousePos.x,
+                               ((f32)Platform->WindowHeight - Platform->Controls->MousePos.y));
     
     if(!AppState->IsInitialized)
     {
-        
+        Entity_Create(AppState, v2f32Init(Platform->WindowWidth   / 2.0f,
+                                          Platform->WindowHeight  / 2.0f),
+                      v2f32Init(400.0f, 60.0f), Entity_guage);
         //UICreateGuage(AppState, v2f32Init(Platform->WindowWidth   / 2.0f,
         //Platform->WindowHeight  / 2.0f),
         //v2f32Init(240.0f, 40.0f),
@@ -57,12 +62,7 @@ App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderDa
     AppState->DeltaTime += Platform->CurrentTime - Platform->LastTime;
     f32 MoveSpeed  = -200.0f *  AppState->DeltaTime;
     
-    v2f32 MousePos = v2f32Init(Platform->Controls->MousePos.x,
-                               Platform->Controls->MousePos.y);
-    
-    // ************************************************
-    // INPUT RESPONSE
-    //*************************************************
+    //~ INPUT RESPONSE
     if(Platform->Controls[0].AlphaKeys[Key_q].EndedDown)
     {
         Platform->QuitApp = 1;
@@ -74,9 +74,10 @@ App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderDa
         
     }
     
+    
     if(Platform->Controls[0].AlphaKeys[Key_w].EndedDown)
     {
-        Entity_Create(AppState, MousePos, v2f32Init(200.0f, 200.0f), Entity_guage);
+        Entity_Create(AppState, MousePos, v2f32Init(400.0f, 60.0f), Entity_guage);
     }
     
     if(Platform->Controls[0].AlphaKeys[Key_s].EndedDown)
@@ -87,11 +88,8 @@ App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderDa
         Entity->Pos.y  = Platform->WindowHeight / 2.0f;
     }
     
-    v2f32 NewMousePos = v2f32Init(MousePos.x, (f32)Platform->WindowHeight - MousePos.y);
     
-    // ************************************************
-    // UPDATE
-    //*************************************************
+    //~ UPDATE
     entity *Entity = AppState->Entities;
     for(u32 EntityIndex = 0; EntityIndex < AppState->EntityCount; EntityIndex++, Entity++)
     {
@@ -100,11 +98,10 @@ App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderDa
         
         rect_v2f32Init(&EntityBounds, &Entity->Dim, &Entity->Pos);
         
-        
-        if(rect_v2f32IsInRect(&EntityBounds, &NewMousePos) && 
+        if(rect_v2f32IsInRect(&EntityBounds, &MousePos) && 
            Platform->Controls->MouseLeftButtonDown)
         {
-            Entity->Pos = NewMousePos;
+            Entity->Pos = MousePos;
         }
         
         PushGuage(RenderData,
@@ -112,7 +109,14 @@ App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderDa
                   Entity->Dim,
                   Platform->Controls->NormThrottlePos);
         
+        str8 Test = str8InitFromArenaFormated(&TextArena, " Throttle: %2.2f%", 100.0f * Platform->Controls->NormThrottlePos);
         
+        //Platform->Controls->NormThrottlePos
+        PushLabel(RenderData,
+                  Test,
+                  v2f32Addxy(&Entity->Pos, -Entity->Dim.x / 2.0f, -60.0f),
+                  0.8f,
+                  v3f32Init(1.0f, 0.0f, 2.0f));
         
 #if 0
         UIProccessGuage(Entity, AppState->DeltaTime);

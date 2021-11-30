@@ -10,28 +10,6 @@
 
 #define ENTITY_MAX_COUNT 256
 
-typedef struct glyph glyph;
-struct glyph
-{
-    u32   CharIndex;
-    u32   TexID  ;
-    v2s32 Dim    ;
-    v2s32 Bearing;
-    u32   Advance;
-};
-
-typedef struct glyph_hash glyph_hash;
-struct glyph_hash
-{
-    u32   Count;
-    u32   MaxCount;
-    u32   CharIndex[256];
-    u32   TexID    [256];
-    v2s32 Dim      [256];
-    v2s32 Bearing  [256];
-    u32   Advance  [256];
-};
-
 typedef struct app_state app_state;
 struct app_state
 {
@@ -48,9 +26,6 @@ struct app_state
     u32     UITextMaxCount;
     
     memory_arena UITextArena;
-    
-    glyph_hash GlyphHash;
-    
 };
 
 typedef struct app_backbuffer app_backbuffer;

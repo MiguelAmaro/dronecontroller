@@ -6,9 +6,6 @@
 #include "dc_types.h"
 #include "dc_math.h"
 
-#define ASSERT(Expression) if(!(Expression)){ *(u32 *)0x00 = 0; }
-#define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
-
 #if 0
 #define PLATFORM_FREE_FILE_MEMORY(name) void name(ThreadContext *thread, void *memory)
 typedef PLATFORM_FREE_FILE_MEMORY(platform_free_file_memory);

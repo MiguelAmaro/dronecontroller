@@ -5,6 +5,10 @@
 
 #include "dc_types.h"
 #include "dc_math.h"
+#include "dc_strings.h"
+
+
+//- PRIMITIVES 
 
 typedef struct textured_vertex textured_vertex;
 struct textured_vertex
@@ -19,23 +23,20 @@ struct untextured_vertex
     v2f32 Pos;
 };
 
-typedef struct render_command_textured_quads render_command_textured_quads;
-struct render_command_textured_quads
+//- COMMANDS 
+typedef enum render_command_type render_command_type;
+enum render_command_type
 {
-    u32 QuadCount;
-    
-    // NOTE(MIGUEL): For accessing render_data buffers.
-    u32 VertexArrayOffset; // NOTE(casey): Uses 4 vertices per quad
-    u32 IndexArrayOffset ; // NOTE(casey): Uses 4 vertices per quad
+    RenderCommand_Clear,
+    RenderCommand_Guage,
+    RenderCommand_Label,
 };
 
-
-typedef struct render_command_data_clear render_command_data_clear;
-struct render_command_data_clear
+typedef struct render_command_header render_command_header;
+struct render_command_header
 {
-    v4f32 Color;
+    u32 Type;
 };
-
 
 typedef struct render_command_data_guage render_command_data_guage;
 struct render_command_data_guage
@@ -56,30 +57,36 @@ struct render_command_data_label
 {
     u32 QuadCount;
     
-    u32 VertexArrayOffset;
+    u32 TexturedVertArrayOffset;
     u32 IndexArrayOffset ;
     
     v2f32 Pos;
     v4f32 Color;
     
-    u8 *String;
+    f32 Scale;
+    
+    str8 String;
 };
 
-typedef enum render_command_type render_command_type;
-enum render_command_type
+
+typedef struct render_command_textured_quads render_command_textured_quads;
+struct render_command_textured_quads
 {
-    RenderCommand_Clear,
-    RenderCommand_Guage,
-    RenderCommand_Label,
+    u32 QuadCount;
+    
+    // NOTE(MIGUEL): For accessing render_data buffers.
+    u32 VertexArrayOffset; // NOTE(casey): Uses 4 vertices per quad
+    u32 IndexArrayOffset ; // NOTE(casey): Uses 4 vertices per quad
 };
 
 
-typedef struct render_command_header render_command_header;
-struct render_command_header
+typedef struct render_command_data_clear render_command_data_clear;
+struct render_command_data_clear
 {
-    u32 Type;
+    v4f32 Color;
 };
 
+//- COMMAND & DATA STORAGE 
 typedef struct render_data render_data;
 struct render_data
 {
@@ -100,6 +107,9 @@ struct render_data
     u32 IndexCount;
 };
 
+
 void PushGuage(render_data *RenderData, v2f32 Pos, v2f32 Dim, f32 NormThrottlePos);
+void PushLabel(render_data *RenderData, str8 String, v2f32 Pos, f32 Scale, v3f32 Color);
+
 
 #endif //DC_RENDER_COMMANDS_H

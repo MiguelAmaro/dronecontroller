@@ -17,9 +17,6 @@
 #include "dc_platform.h"
 #include "dc_serialport.h"
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
-
 global platform         g_Platform   = {0};
 global win32_state      g_Win32State = {0};
 global win32_backbuffer g_BackBuffer = {0};
@@ -34,140 +31,6 @@ PLATFORM_SET_CAPTURE(PlatformSetCapture)
     return;
 }
 #endif
-
-internaldef void
-GlyphHashTableInit(app_state *AppState)
-{
-    AppState->GlyphHash.Count    = 0;
-    AppState->GlyphHash.MaxCount = 256;
-    
-    return;
-}
-
-internaldef glyph
-GlyphHashTableInsert(glyph_hash *GlyphHash,
-                     u32   CharIndex,
-                     u32   TextureID,
-                     v2s32 Dim,
-                     v2s32 Bearing,
-                     u32   Advance)
-{
-    u32 GlyphHashIndex = CharIndex % GlyphHash->MaxCount;
-    
-    glyph Found = { 0 };
-    
-    
-    for(u32 NumVisited = 0;  NumVisited < GlyphHash->MaxCount; NumVisited++)
-    {
-        u32 Index = (GlyphHashIndex + NumVisited) % GlyphHash->MaxCount;
-        
-        if(GlyphHash->CharIndex[Index] == 0)
-        {
-            GlyphHash->CharIndex[Index] = CharIndex;
-            GlyphHash->TexID    [Index] = TextureID;
-            GlyphHash->Dim      [Index] = Dim;
-            GlyphHash->Bearing  [Index] = Bearing;
-            GlyphHash->Advance  [Index] = Advance;
-            break;
-        }
-    }
-    
-    return Found;
-}
-
-
-internaldef glyph
-GlyphHashTableLookup(glyph_hash *GlyphHash, u32   CharIndex)
-{
-    u32 GlyphHashIndex = CharIndex % GlyphHash->MaxCount;
-    
-    glyph Found = { 0 };
-    
-    for(u32 NumVisited = 0;  NumVisited < GlyphHash->MaxCount; NumVisited++)
-    {
-        u32 Index = (GlyphHashIndex + NumVisited) % GlyphHash->MaxCount;
-        
-        if(GlyphHash->CharIndex[Index] == CharIndex)
-        {
-            Found.CharIndex = GlyphHash->CharIndex[Index];
-            Found.TexID     = GlyphHash->TexID  [Index];
-            Found.Dim       = GlyphHash->Dim    [Index];
-            Found.Bearing   = GlyphHash->Bearing[Index];
-            Found.Advance   = GlyphHash->Advance[Index];
-            break;
-        }
-    }
-    
-    
-    return Found;
-}
-
-
-internaldef void
-GlyphHashTableFill(app_state *AppState)
-{
-    // NOTE(MIGUEL): Move this to app state maybe?
-    FT_Library ft;
-    if (FT_Init_FreeType(&ft))
-    {
-        OutputDebugString("FreeType Error: Could not init FreeType Library");
-        ASSERT(0);
-    }
-    
-    FT_Face Face;
-    if (FT_New_Face(ft, "..\\res\\fonts\\cour.ttf", 0, &Face))
-    {
-        OutputDebugString("FreeType Error: Could not load Font");
-        ASSERT(0);
-    }
-    
-    FT_Set_Pixel_Sizes(Face, 0, 48);
-    
-    // disable byte-alignment restriction
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    
-    for(u32 CharIndex = 0; CharIndex < 128; CharIndex++)
-    {
-        if (FT_Load_Char(Face, CharIndex, FT_LOAD_RENDER))
-        {
-            OutputDebugString("FreeType Error: Could not load Glyph");
-            ASSERT(0);
-            continue;
-        }
-        
-        u32 TextureID;
-        glGenTextures(1, &TextureID);
-        glBindTexture(GL_TEXTURE_2D, TextureID);
-        glTexImage2D(GL_TEXTURE_2D,
-                     0,
-                     GL_RED,
-                     Face->glyph->bitmap.width,
-                     Face->glyph->bitmap.rows,
-                     0,
-                     GL_RED,
-                     GL_UNSIGNED_BYTE,
-                     Face->glyph->bitmap.buffer);
-        
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        
-        GlyphHashTableInsert(&AppState->GlyphHash,
-                             CharIndex,
-                             TextureID,
-                             v2s32Init(Face->glyph->bitmap.width, Face->glyph->bitmap.rows),
-                             v2s32Init(Face->glyph->bitmap_left , Face->glyph->bitmap_top),
-                             Face->glyph->advance.x);
-    }
-    
-    glBindTexture(GL_TEXTURE_2D, 0);
-    
-    FT_Done_Face(Face);
-    FT_Done_FreeType(ft);
-    
-    return;
-}
 
 LRESULT CALLBACK 
 win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l_param) {
@@ -325,42 +188,6 @@ win32_ProcessPendingMessages(win32_state *State, input_src *Keyboard)
     return;
 }
 
-#if 0
-void
-RenderRect(opengl_render_info *Info, v2f32 Pos, v2f32 Dim, f32 DeltaTime)
-{
-    m4f32 WidgetProjection = m4f32Orthographic(0.0f, g_Platform.WindowWidth,
-                                               0.0f, g_Platform.WindowHeight,
-                                               0.1f, 100.0f);
-    
-    m4f32 WidgetTransform = m4f32Identity();
-    m4f32 Trans           = m4f32Translate(v3f32Init(Pos.x, Pos.y, 0.0f));
-    m4f32 Scale           = m4f32Scale(Dim.x / 2.0f, Dim.y / 2.0f, 1.0f);
-    m4f32 Rotate          = m4f32Identity();
-    
-    m4f32 World     = m4f32Multiply(Scale, Trans);
-    WidgetTransform = m4f32Multiply(World, WidgetProjection);
-    
-    GL_Call(glUseProgram(Info->ShaderID));
-    GL_Call(glUniformMatrix4fv(Info->UThrottleTransform, 1, 0, WidgetTransform.e));
-    GL_Call(glUniform2fv(Info->UWindowSize , 1, v2f32Init(g_Platform.WindowWidth,
-                                                          g_Platform.WindowHeight).c));
-    GL_Call(glUniform2fv(Info->UThrottlePos , 1, Pos.c));
-    GL_Call(glUniform2fv(Info->UThrottleSize, 1, Dim.c));
-    GL_Call(glUniform1f(Info->UThrottle, g_Platform.Controls[0].NormThrottlePos));
-    GL_Call(glUniform1f(Info->UDeltaTime, DeltaTime));
-    
-    GL_Call(glEnable(GL_BLEND));
-    GL_Call(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-    
-    GL_Call(glBindVertexArray(Info->VertexAttribID));
-    GL_Call(glDrawArrays(GL_TRIANGLES, 0, 6));
-    GL_Call(glBindVertexArray(0));
-    
-    return;
-}
-#endif
-
 int CALLBACK 
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCode) 
 {
@@ -420,8 +247,6 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                                                      &Constraints);
             
             app_state *AppState = (app_state *)g_Platform.PermanentStorage;
-            GlyphHashTableInit(AppState);
-            GlyphHashTableFill(AppState);
             
             win32_SerialPort_InitDevice(&g_Win32State, &g_SerialPortDevice);
             // TODO(MIGUEL): Set initialization to individual controller structures
