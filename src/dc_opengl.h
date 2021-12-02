@@ -6,6 +6,18 @@
 #include "dc_types.h"
 #include "dc_render_commands.h"
 
+typedef struct opengl_shader_quad opengl_shader_quad;
+struct opengl_shader_quad
+{
+    u32 ID;
+    
+    //Uniform IDs
+    u32 UIDColor;
+    u32 UIDTransform;
+    
+    opengl_shader_file_info FileInfo;
+};
+
 typedef struct opengl_shader_guage opengl_shader_guage;
 struct opengl_shader_guage
 {
@@ -71,6 +83,7 @@ struct opengl_renderer
     
     opengl_shader_guage GuageShader;
     opengl_shader_label LabelShader;
+    opengl_shader_quad PrimitiveShader;
 };
 
 

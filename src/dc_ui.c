@@ -8,7 +8,13 @@ void UIBeginFrame(platform *Platform)
 {
     // at start of frame, clear old state and compute
     // relative-to-previous-frame state (like mouse deltas)
-    UIState.Mouse = Platform->Controls[0].MousePos;
+    UIState.Mouse    = v2f32Init(Platform->Controls[0].MousePos.x,
+                                 (f32)Platform->WindowHeight - 
+                                 Platform->Controls[0].MousePos.y);
+    
+    UIState.LeftDown = Platform->Controls[0].MouseLeftButtonDown;
+    UIState.LeftUp   = !Platform->Controls[0].MouseLeftButtonDown;
+    
     
     // what's hot this frame is whatever was last in hot-to-be in last frame
     // (painter's algorithm--last-most widget is on top)
@@ -204,23 +210,23 @@ UIButtonLogicDown(void *ID, b32 Over)
 
 // a generic draggable rectangle... if you want its position clamped, do so yourself
 internaldef b32
-UIDragXY(v2f32 *Pos, v2f32 *Dim, void *ID)
+UIDragXY(r2f32 *Bounds, v2f32 Pos, void *ID)
 {
     b32 Result = 0;
     
-    rect_v2f32 Bounds = rect_v2f32Init(0, Dim, Pos);
-    
-    if (UIButtonLogicDown(ID, rect_v2f32IsInRect(&Bounds, &UIState.Mouse)))
+    if (UIButtonLogicDown(ID, r2f32IsInRect(Bounds, &UIState.Mouse)))
     {
-        UIState.Drag = v2f32Sub(Pos, &UIState.Mouse);
+        
+        UIState.Drag = v2f32Sub(&Pos, &UIState.Mouse);
     }
     
     if (UIIsActive(ID))
     {
-        if ((UIState.Mouse.x + UIState.Drag.x != Pos->x) || 
-            (UIState.Mouse.y + UIState.Drag.y != Pos->y))
+        if ((UIState.Mouse.x + UIState.Drag.x != Pos.x) || 
+            (UIState.Mouse.y + UIState.Drag.y != Pos.y))
         {
-            *Pos = v2f32Add(&UIState.Mouse, &UIState.Drag);
+            Bounds->min = v2f32Add(&UIState.Mouse, &UIState.Drag);
+            Bounds->max = v2f32Add(&UIState.Mouse, &UIState.Drag);
             
             Result = 1;
         }
@@ -230,17 +236,24 @@ UIDragXY(v2f32 *Pos, v2f32 *Dim, void *ID)
 }
 
 internaldef b32
-UIDragX (v2f32 *Pos, v2f32 *Dim, void *ID)
+UIDragEdgeX (f32 *X, f32 HandleWidth, f32 MinY, f32 MaxY, void *ID)
 {
     b32 Result = 0;
     // @TODO: copy above uiButtonDownLogic drag offseting code
-    rect_v2f32 Bounds = rect_v2f32Init(0, Dim, Pos);
     
-    UIButtonLogic(ID, rect_v2f32IsInRect(&Bounds, &UIState.Mouse));
-    
-    if (UIIsActive(ID) && (UIState.Mouse.x != Pos->x))
+    r2f32 EdgeButtonBounds =
     { 
-        Pos->x = UIState.Mouse.x; 
+        *X - (HandleWidth * 0.5f),
+        MinY,
+        *X + (HandleWidth * 0.5f),
+        MaxY,
+    };
+    
+    UIButtonLogic(ID, r2f32IsInRect(&EdgeButtonBounds, &UIState.Mouse));
+    
+    if (UIIsActive(ID) && (UIState.Mouse.x != *X))
+    { 
+        *X = UIState.Mouse.x; 
         Result = 1; 
     }
     
@@ -248,21 +261,57 @@ UIDragX (v2f32 *Pos, v2f32 *Dim, void *ID)
 }
 
 internaldef b32
-UIDragY (v2f32 *Pos, v2f32 *Dim, void *ID)
+UIDragEdgeY (f32 *Y, f32 HandleWidth, f32 MinX, f32 MaxX, void *ID)
 {
     b32 Result = 0;
-    rect_v2f32 Bounds = rect_v2f32Init(0, Dim, Pos);
+    // @TODO: copy above uiButtonDownLogic drag offseting code
     
-    UIButtonLogic(ID, rect_v2f32IsInRect(&Bounds, &UIState.Mouse));
-    
-    if (UIIsActive(ID) && (UIState.Mouse.y != Pos->y))
+    r2f32 EdgeButtonBounds =
     { 
-        Pos->y = UIState.Mouse.y; 
+        .min.x = MinX,
+        .min.y = *Y - (HandleWidth * 0.5f),
+        .max.x = MaxX,
+        .max.y = *Y + (HandleWidth * 0.5f),
+    };
+    
+    UIButtonLogic(ID, r2f32IsInRect(&EdgeButtonBounds, &UIState.Mouse));
+    
+    if (UIIsActive(ID) && (UIState.Mouse.y != *Y))
+    { 
+        *Y = UIState.Mouse.y; 
         Result = 1; 
     }
     
     return Result;
 }
+
+internaldef b32
+UIDragCorner(v2f32 *Corner, f32 HandleWidth, void *ID)
+{
+    b32 Result = 0;
+    
+    r2f32 CornerButtonBounds = r2f32InitFromPosRadius(0, Corner, HandleWidth / 2.0f);
+    
+    
+    if (UIButtonLogicDown(ID, r2f32IsInRect(&CornerButtonBounds, &UIState.Mouse)))
+    {
+        UIState.Drag = v2f32Sub(Corner, &UIState.Mouse);
+    }
+    
+    if (UIIsActive(ID))
+    {
+        if ((UIState.Mouse.x + UIState.Drag.x != Corner->x) || 
+            (UIState.Mouse.y + UIState.Drag.y != Corner->y))
+        {
+            *Corner = v2f32Add(&UIState.Mouse, &UIState.Drag);
+            
+            Result = 1;
+        }
+    }
+    
+    return Result;
+}
+
 
 #if 0
 internaldef void
@@ -288,8 +337,18 @@ UITextPush(app_state *AppState, memory_arena *Arena,
 #endif
 
 internaldef void
-UIProccessGuage(entity *Entity, float dt)
+UIProccessGuage(entity *Entity,
+                f32 dt,
+                f32 NormThrottlePos,
+                memory_arena *TextArena,
+                render_data *RenderData)
 {
+    
+    // TODO(MIGUEL): Fix the bugs
+    // TODO(MIGUEL): Z ordering
+    // TODO(MIGUEL): proper id ing
+    // TODO(MIGUEL): get dragxy to work
+    
     b32 CenterHot;
     int HandleWidth = 5;
     // allow resizing from any edge or corner
@@ -297,45 +356,57 @@ UIProccessGuage(entity *Entity, float dt)
     UIState.IsHot    = 0; // check whether any edges are currently being hovered
     UIState.IsActive = 0;
     
-    rect_v2f32 EntityRect;
+    /*
+       *            H
+*        |<----->|
+       *   ___   _______
+         *    ^   |       |
+    *    |   |       |
+    *  W |   |   +   |
+    *    |   |   ^   |
+       *   _v_  |___|___| 
+       *            |
+       *          (X, Y)
+       *
+*            (x1, y1)
+       *         _______v
+         *        |       |
+    *        |       |
+    *        |   +   |
+    *        |       |
+       *        |_______| 
+       *        ^
+       *     (x0, y0)
+*
+*
+        */
     
-    rect_v2f32Init(&EntityRect, &Entity->Dim, &Entity->Pos);
     // drag center region to move whole thing
+    r2f32 EntityRect = r2f32Init(0, &Entity->Dim, &Entity->Pos);
     {
-        int x = (EntityRect.min.x + EntityRect.max.x)/2;
-        int y = (EntityRect.min.y + EntityRect.max.y)/2;
-        int xp = x;
-        int yp = y;
-        
         // r aliases with &EntityRect.min.x, so use ID2(r)
-        if (UIDragXY(&Entity->Pos, &Entity->Dim, ID2(Entity)))
-        {
-            // move both corners by same amount == dragging
-            EntityRect.min.x += (x - xp);
-            EntityRect.min.y += (y - yp);
-            EntityRect.max.x += (x - xp);
-            EntityRect.max.y += (y - yp);
-        }
+        if (UIDragXY(&EntityRect, Entity->Pos, ID2(Entity)))
+        {}
     }
     
     CenterHot = UIState.IsHot;
     UIState.IsHot = 0;
     
-    // edges first, so corners are on top
-    //UIDragX (&EntityRect.min.x,HandleWidth, EntityRect.min.y,EntityRect.max.y,   &EntityRect.min.x);
-    //UIDragX (&EntityRect.max.x,HandleWidth, EntityRect.min.y,EntityRect.max.y,   &EntityRect.max.x);
+    // Dragging Edges
+    UIDragEdgeX(&EntityRect.min.x, HandleWidth, EntityRect.min.y, EntityRect.max.y, &EntityRect.min.x);
+    UIDragEdgeX(&EntityRect.max.x, HandleWidth, EntityRect.min.y, EntityRect.max.y, &EntityRect.max.x);
     
-    //UIDragY (EntityRect.min.x,EntityRect.max.x, &EntityRect.min.y,HandleWidth,   &EntityRect.min.y);
-    //UIDragY (EntityRect.min.x,EntityRect.max.x, &EntityRect.max.y,HandleWidth,   &EntityRect.max.y);
+    UIDragEdgeY(&EntityRect.min.y, HandleWidth, EntityRect.min.x, EntityRect.max.x, &EntityRect.min.y);
+    UIDragEdgeY(&EntityRect.max.y, HandleWidth, EntityRect.min.x, EntityRect.max.x, &EntityRect.max.y);
     
     UIState.CurIndex = 1; // change index id so that we can reuse same pointers as new handles
-    HandleWidth = 9; // corners have larger handles
+    HandleWidth      = 9; // corners have larger handles
     
-    //UIDragXY(&EntityRect.min.x,HandleWidth, &EntityRect.min.y,HandleWidth, &EntityRect.min.x);
-    //UIDragXY(&EntityRect.max.x,HandleWidth, &EntityRect.min.y,HandleWidth, &EntityRect.min.y);
+    UIDragCorner(&EntityRect.min, HandleWidth, &EntityRect.min.x);
+    UIDragCorner(&EntityRect.max, HandleWidth, &EntityRect.min.y);
     
-    //UIDragXY(&EntityRect.min.x,HandleWidth, &EntityRect.max.y,HandleWidth, &EntityRect.max.y);
-    //UIDragXY(&EntityRect.max.x,HandleWidth, &EntityRect.max.y,HandleWidth, &EntityRect.max.x);
+    UIDragCorner(&EntityRect.min, HandleWidth, &EntityRect.max.y);
+    UIDragCorner(&EntityRect.max, HandleWidth, &EntityRect.max.x);
     UIState.CurIndex = 0;
     
     if (!CenterHot && !UIState.IsHot)
@@ -352,14 +423,30 @@ UIProccessGuage(entity *Entity, float dt)
     
     if (UIState.IsHot)
     { 
-        // highlight borders when they're draggable
-        rect_v2f32 BlackInnerBorder, WhiteBorderFill, BlackOuterBorder;
+        v4f32 Color = v4f32Init(1.0f, 0.75f, 1.0f, 0.4f);
         
+        f32 EntityWidth  = (EntityRect.max.x - EntityRect.min.x);
+        f32 EntityHeight = (EntityRect.max.y - EntityRect.min.y);
         
+        f32 HalfWidth  = (EntityWidth / 2.0f);
+        f32 HalfHeight = (EntityHeight / 2.0f);
         
-        //RenderRect(EntityRect.min.x  ,EntityRect.min.y  , EntityRect.max.x  ,EntityRect.max.y  , RGB_GREY(0));
-        //RenderRect(EntityRect.min.x+1,EntityRect.min.y+1, EntityRect.max.x-1,EntityRect.max.y-1, RGB_GREY(255));
-        //RenderRect(EntityRect.min.x+2,EntityRect.min.y+2, EntityRect.max.x-2,EntityRect.max.y-2, RGB_GREY(0));
+        v2f32 LeftPos = v2f32Init(EntityRect.min.x - 4.0f, EntityRect.min.y + HalfHeight);
+        v2f32 LeftDim = v2f32Init(1.0f, EntityHeight + 8.0f);
+        
+        v2f32 RightPos = v2f32Init(EntityRect.max.x + 4.0f, EntityRect.min.y + HalfHeight);
+        v2f32 RightDim = v2f32Init(1.0f, EntityHeight + 8.0f);
+        
+        v2f32 TopPos = v2f32Init(EntityRect.min.x + HalfWidth, EntityRect.max.y + 4.0f);
+        v2f32 TopDim = v2f32Init(EntityWidth + 8.0f, 1.0f);
+        
+        v2f32 BottomPos = v2f32Init(EntityRect.min.x + HalfWidth, EntityRect.min.y - 4.0f);
+        v2f32 BottomDim = v2f32Init(EntityWidth + 8.0f, 1.0f);
+        
+        PushRect(RenderData, LeftPos, LeftDim  , Color);
+        PushRect(RenderData, RightPos, RightDim  , Color);
+        PushRect(RenderData, TopPos, TopDim  , Color);
+        PushRect(RenderData, BottomPos, BottomDim  , Color);
     }
     else
     {
@@ -370,6 +457,24 @@ UIProccessGuage(entity *Entity, float dt)
     {
         g_SelectedEntity = Entity->Index;
     }
+    
+    r2f32ConvertToDimPos(&EntityRect, &Entity->Dim, &Entity->Pos);
+    
+    PushGuage(RenderData,
+              Entity->Pos,
+              Entity->Dim,
+              NormThrottlePos);
+    
+    str8 Test = str8InitFromArenaFormated(TextArena,
+                                          " Throttle: %2.2f%",
+                                          100.0f * NormThrottlePos);
+    
+    //Platform->Controls->NormThrottlePos
+    PushLabel(RenderData,
+              Test,
+              v2f32Addxy(&Entity->Pos, -Entity->Dim.x / 2.0f, -60.0f),
+              0.8f,
+              v3f32Init(1.0f, 0.0f, 2.0f));
     
     return;
 }

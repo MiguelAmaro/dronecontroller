@@ -43,14 +43,6 @@ App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderDa
     
     if(!AppState->IsInitialized)
     {
-        Entity_Create(AppState, v2f32Init(Platform->WindowWidth   / 2.0f,
-                                          Platform->WindowHeight  / 2.0f),
-                      v2f32Init(400.0f, 60.0f), Entity_guage);
-        //UICreateGuage(AppState, v2f32Init(Platform->WindowWidth   / 2.0f,
-        //Platform->WindowHeight  / 2.0f),
-        //v2f32Init(240.0f, 40.0f),
-        //&AppState->UITextArena);
-        
         AppState->IsInitialized = 1;
     }
     
@@ -74,6 +66,10 @@ App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderDa
         
     }
     
+    if(Platform->Controls[0].AlphaKeys[Key_w].EndedDown)
+    {
+        Entity_Create(AppState, MousePos, v2f32Init(400.0f, 60.0f), Entity_guage);
+    }
     
     if(Platform->Controls[0].AlphaKeys[Key_w].EndedDown)
     {
@@ -94,34 +90,26 @@ App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderDa
     for(u32 EntityIndex = 0; EntityIndex < AppState->EntityCount; EntityIndex++, Entity++)
     {
         
+#if 0
         rect_v2f32 EntityBounds = { 0 };
         
         rect_v2f32Init(&EntityBounds, &Entity->Dim, &Entity->Pos);
         
-        if(rect_v2f32IsInRect(&EntityBounds, &MousePos) && 
-           Platform->Controls->MouseLeftButtonDown)
+        UIButtonLogic(Entity, rect_v2f32IsInRect(&EntityBounds, &MousePos));
+        
+        if(UIIsActive(Entity))
         {
             Entity->Pos = MousePos;
         }
         
-        PushGuage(RenderData,
-                  Entity->Pos,
-                  Entity->Dim,
-                  Platform->Controls->NormThrottlePos);
-        
-        str8 Test = str8InitFromArenaFormated(&TextArena, " Throttle: %2.2f%", 100.0f * Platform->Controls->NormThrottlePos);
-        
-        //Platform->Controls->NormThrottlePos
-        PushLabel(RenderData,
-                  Test,
-                  v2f32Addxy(&Entity->Pos, -Entity->Dim.x / 2.0f, -60.0f),
-                  0.8f,
-                  v3f32Init(1.0f, 0.0f, 2.0f));
-        
-#if 0
-        UIProccessGuage(Entity, AppState->DeltaTime);
 #else
+        UIProccessGuage(Entity,
+                        AppState->DeltaTime,
+                        Platform->Controls->NormThrottlePos,
+                        &TextArena,
+                        RenderData);
 #endif
+        
     }
     
     

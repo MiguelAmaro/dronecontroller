@@ -12,6 +12,11 @@
 #include FT_FREETYPE_H
 
 
+// NOTE(MIGUEL): There will be 2 catagories of things for the renderer,
+//               * [Specialize Items] like (Guages, Graphs, Text, or any Items
+//                 that require special shaders)
+//               * [Primitives] only need verts and colors
+
 typedef struct render_constraints render_constraints;
 struct render_constraints
 {
@@ -168,6 +173,7 @@ opengl_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, re
     
     opengl_shader_guage *GuageShader = &OpenGLRenderer->GuageShader;
     opengl_shader_label *LabelShader = &OpenGLRenderer->LabelShader;
+    opengl_shader_quad  *PrimitiveShader = &OpenGLRenderer->PrimitiveShader;
     
     ASSERT(OpenGLCreateShader(&GuageShader->ID,
                               &GuageShader->FileInfo,
@@ -178,6 +184,11 @@ opengl_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, re
                               &LabelShader->FileInfo,
                               "../res/shaders/text.glsl",
                               sizeof("../res/shaders/text.glsl")));
+    
+    ASSERT(OpenGLCreateShader(&PrimitiveShader->ID,
+                              &PrimitiveShader->FileInfo,
+                              "../res/shaders/primitive.glsl",
+                              sizeof("../res/shaders/primitive.glsl")));
     
     GuageShader->UIDThrottle   = glGetUniformLocation(GuageShader->ID, "ThrottleValue"  );
     GuageShader->UIDWindowSize = glGetUniformLocation(GuageShader->ID, "WindowSize"  );
@@ -191,6 +202,9 @@ opengl_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, re
     LabelShader->UIDDeltaTime  = glGetUniformLocation(LabelShader->ID, "DeltaTime"  );
     LabelShader->UIDTransform  = glGetUniformLocation(LabelShader->ID, "Transform"  );
     
+    PrimitiveShader->UIDColor      = glGetUniformLocation(PrimitiveShader->ID, "ColorIn"  );
+    PrimitiveShader->UIDTransform  = glGetUniformLocation(PrimitiveShader->ID, "Transform"  );
+    
     GlyphHashTableInit(&GlyphHash);
     GlyphHashTableFill(&GlyphHash);
     
@@ -203,6 +217,7 @@ void RendererBeginFrame(opengl_renderer *OpenGL, s32 WindowWidth, s32 WindowHeig
     
     OpenGLHotSwapShader(&OpenGL->GuageShader.ID, &OpenGL->GuageShader.FileInfo);
     OpenGLHotSwapShader(&OpenGL->LabelShader.ID, &OpenGL->LabelShader.FileInfo);
+    OpenGLHotSwapShader(&OpenGL->PrimitiveShader.ID, &OpenGL->PrimitiveShader.FileInfo);
     
     OpenGL->WindowWidth  = WindowWidth;
     OpenGL->WindowHeight = WindowHeight;
@@ -262,6 +277,53 @@ void RendererEndFrame(opengl_renderer *OpenGL)
                 glClearColor(Color.r, Color.g, Color.b, Color.a);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             } break;
+            case RenderCommand_Quad:
+            {
+                CurrentCommandHeaderPos += (sizeof(render_command_header) + 
+                                            sizeof(render_command_data_quad));
+                
+                render_command_data_quad*QuadData =
+                    ((render_command_data_quad *)((u8 *)CommandHeader + 
+                                                  sizeof(render_command_header)));
+                
+                m4f32 Trans  = m4f32Translate(v3f32Init(QuadData->Pos.x, QuadData->Pos.y, 0.0f));
+                m4f32 Scale  = m4f32Scale(QuadData->Dim.x / 2.0f, QuadData->Dim.y / 2.0f, 1.0f);
+                m4f32 Rotate = m4f32Identity();
+                
+                m4f32 World          = m4f32Multiply(Scale, Trans);
+                m4f32 Transform = m4f32Multiply(World, OrthoProjection);
+                
+                v2f32 WindowDim = v2f32Init(OpenGL->WindowWidth, OpenGL->WindowHeight);
+                
+                
+                
+                opengl_shader_quad *PrimitiveShader = &OpenGL->PrimitiveShader;
+                OPENGL_DBG(glUseProgram(PrimitiveShader->ID));
+                
+                OPENGL_DBG(glBindVertexArray(OpenGL->UntexturedVertAttribID));
+                OPENGL_DBG(glBindBuffer(GL_ARRAY_BUFFER,  OpenGL->UntexturedVertBufferID));
+                OPENGL_DBG(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, OpenGL->IndexBufferID));
+                
+                
+                // POSITION ATTRIB
+                OPENGL_DBG(glEnableVertexAttribArray(0));
+                OPENGL_DBG(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(v2f32), (GLvoid *)0));
+                
+                
+                OPENGL_DBG(glUniform4fv(PrimitiveShader->UIDColor, 1, QuadData->Color.c));
+                OPENGL_DBG(glUniformMatrix4fv(PrimitiveShader->UIDTransform, 1, 0, Transform.e));
+                
+                OPENGL_DBG(glEnable(GL_BLEND));
+                OPENGL_DBG(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+                
+                OPENGL_DBG(glDrawElementsBaseVertex(GL_TRIANGLES,
+                                                    6 * QuadData->QuadCount,
+                                                    GL_UNSIGNED_SHORT,
+                                                    (GLvoid *)(QuadData->IndexArrayOffset * sizeof(u16)),
+                                                    QuadData->UntexturedVertArrayOffset));
+                OPENGL_DBG(glBindVertexArray(0));
+                OPENGL_DBG(glUseProgram(0));
+            } break;
             case RenderCommand_Guage:
             {
                 CurrentCommandHeaderPos += (sizeof(render_command_header) + 
@@ -310,7 +372,6 @@ void RendererEndFrame(opengl_renderer *OpenGL)
                                                     GL_UNSIGNED_SHORT,
                                                     (GLvoid *)(GuageData->IndexArrayOffset * sizeof(u16)),
                                                     GuageData->UntexturedVertArrayOffset));
-                //OPENGL_DBG(glDisableVertexAttribArray(0));
                 OPENGL_DBG(glBindVertexArray(0));
                 OPENGL_DBG(glUseProgram(0));
             } break;

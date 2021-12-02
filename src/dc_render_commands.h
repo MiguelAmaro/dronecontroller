@@ -30,12 +30,27 @@ enum render_command_type
     RenderCommand_Clear,
     RenderCommand_Guage,
     RenderCommand_Label,
+    RenderCommand_Quad, // TODO(MIGUEL): Call this primitive and have paramerized shader draw primitives. Ui funcions will pass in the parameters necessary to for the shader draw the objects need. As far as verts go every thing will be quad except for very special cases.
 };
 
 typedef struct render_command_header render_command_header;
 struct render_command_header
 {
     u32 Type;
+};
+
+typedef struct render_command_data_quad render_command_data_quad;
+struct render_command_data_quad
+{
+    u32 QuadCount;
+    
+    u32 UntexturedVertArrayOffset;
+    u32 IndexArrayOffset ;
+    
+    v2f32 Pos;
+    v2f32 Dim;
+    
+    v4f32 Color;
 };
 
 typedef struct render_command_data_guage render_command_data_guage;

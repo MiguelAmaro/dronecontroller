@@ -28,6 +28,66 @@ void PushClear(render_data *RenderData, v4f32 Color)
 }
 
 
+void PushRect(render_data *RenderData, v2f32 Pos, v2f32 Dim, v4f32 Color)
+{
+    untextured_vertex QuadVerts[4] =
+    {
+        {  1.0f,  1.0f },
+        {  1.0f, -1.0f },
+        { -1.0f, -1.0f },
+        { -1.0f,  1.0f },
+    };
+    
+    u16 QuadIndices[] = { 0, 1, 2, 0, 2, 3 };
+    
+    u8 *EndOfCommandBuffer  = (RenderData->RenderCommands + 
+                               RenderData->RenderCommandsMaxSize);
+    u8 *CommandPushLocation = (RenderData->RenderCommandsFilledPos +
+                               sizeof(render_command_header) + 
+                               sizeof(render_command_data_quad));
+    
+    if(CommandPushLocation < EndOfCommandBuffer)
+    {
+        if(((RenderData->UntexturedVertCount + 4) < RenderData->UntexturedVertMaxCount) &&
+           ((RenderData->IndexCount          + 6) < RenderData->IndexMaxCount))
+        {
+            
+            untextured_vertex *UntexturedVertex = (RenderData->UntexturedVerts + 
+                                                   RenderData->UntexturedVertCount);
+            
+            u16 *Indices = RenderData->Indices + RenderData->IndexCount;
+            
+            MemoryCopy(QuadVerts       , sizeof(untextured_vertex) * 4,
+                       UntexturedVertex, sizeof(untextured_vertex) * 4);
+            
+            MemoryCopy(QuadIndices, sizeof(u16) * 6,
+                       Indices    , sizeof(u16) * 6);
+            
+            render_command_header *CommandHeader;
+            
+            CommandHeader = (render_command_header *)(RenderData->RenderCommandsFilledPos);
+            CommandHeader->Type = RenderCommand_Quad;
+            
+            render_command_data_quad *Data;
+            Data = (render_command_data_quad *)((u8 *)CommandHeader +
+                                                sizeof(render_command_header));
+            
+            Data->QuadCount = 1;
+            Data->UntexturedVertArrayOffset = RenderData->UntexturedVertCount;
+            Data->IndexArrayOffset          = RenderData->IndexCount;
+            Data->Dim = Dim;
+            Data->Pos = Pos;
+            Data->Color= Color;
+            
+            RenderData->UntexturedVertCount += 4;
+            RenderData->IndexCount          += 6;
+            RenderData->RenderCommandsFilledPos = CommandPushLocation;
+        }
+    }
+    
+    return;
+}
+
 void PushGuage(render_data *RenderData, v2f32 Pos, v2f32 Dim, f32 NormThrottlePos)
 {
     untextured_vertex QuadVerts[4] =

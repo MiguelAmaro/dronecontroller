@@ -6,10 +6,8 @@
 #include "dc_types.h"
 
 
-#ifndef max
-#define max(a,b)  ((a) > (b) ? (a) : (b))
-#define min(a,b)  ((a) < (b) ? (a) : (b))
-#endif
+#define MAX(a,b)  ((a) > (b) ? (a) : (b))
+#define MIN(a,b)  ((a) < (b) ? (a) : (b))
 
 
 typedef union v2f32 v2f32;
@@ -75,8 +73,8 @@ union v4f32
 
 //- RECTANGLES 
 
-typedef union rect_v2f32 rect_v2f32;
-union rect_v2f32
+typedef union r2f32 r2f32;
+union r2f32
 {
     struct
     {
@@ -86,8 +84,8 @@ union rect_v2f32
     v2f32 e[2];
 };
 
-typedef union rect_v2s32 rect_v2s32;
-union rect_v2s32
+typedef union r2s32 r2s32;
+union r2s32
 {
     struct
     {
@@ -228,9 +226,9 @@ internaldef v4f32 v4f32Init(f32 x, f32 y, f32 z, f32 w)
 
 //- RECTANGLE 2D 
 
-internaldef rect_v2f32 rect_v2f32Init(rect_v2f32 *Rect, v2f32 *Dim, v2f32 *Pos)
+internaldef r2f32 r2f32Init(r2f32 *Rect, v2f32 *Dim, v2f32 *Pos)
 {
-    rect_v2f32 Result = { 0 };
+    r2f32 Result = { 0 };
     
     Result.min.x = Pos->x - (Dim->x / 2);
     Result.min.y = Pos->y - (Dim->y / 2);
@@ -242,7 +240,21 @@ internaldef rect_v2f32 rect_v2f32Init(rect_v2f32 *Rect, v2f32 *Dim, v2f32 *Pos)
     return Result;
 }
 
-internaldef b32 rect_v2f32IsInRect(rect_v2f32 *Bounds, v2f32 *Point)
+internaldef r2f32 r2f32InitFromPosRadius(r2f32 *Rect, v2f32 *Pos, f32 Radius)
+{
+    r2f32 Result = { 0 };
+    
+    Result.min.x = Pos->x - Radius;
+    Result.min.y = Pos->y - Radius;
+    Result.max.x = Pos->x + Radius;
+    Result.max.y = Pos->y + Radius;
+    
+    if(Rect) *Rect = Result;
+    
+    return Result;
+}
+
+internaldef b32 r2f32IsInRect(r2f32 *Bounds, v2f32 *Point)
 {
     b32 Result = ((Point->x <= Bounds->max.x) &&
                   (Point->y <= Bounds->max.y) &&
@@ -252,9 +264,20 @@ internaldef b32 rect_v2f32IsInRect(rect_v2f32 *Bounds, v2f32 *Point)
     return Result;
 }
 
-internaldef void rect_v2f32AddTo(rect_v2f32 *Bounds, f32 Value)
+internaldef r2f32 r2f32ConvertToDimPos(r2f32 *Rect, v2f32 *Dim, v2f32 *Pos)
 {
-    rect_v2f32 *Result = Bounds;
+    r2f32 Result = { 0 };
+    
+    *Dim = v2f32Init(Rect->max.x - Rect->min.x, Rect->max.y - Rect->min.y);
+    *Pos = v2f32Init(Rect->min.x + (Dim->x * 0.5f),
+                     Rect->min.y + (Dim->y * 0.5f));
+    
+    return Result;
+}
+
+internaldef void r2f32AddTo(r2f32 *Bounds, f32 Value)
+{
+    r2f32 *Result = Bounds;
     
     Result->min.x = Bounds->min.x - Value;
     Result->min.y = Bounds->min.y - Value;
@@ -264,7 +287,7 @@ internaldef void rect_v2f32AddTo(rect_v2f32 *Bounds, f32 Value)
     return;
 }
 
-internaldef void rect_v2s32Init(rect_v2s32 *Rect, v2s32 *Dim, v2s32 *Pos)
+internaldef void r2s32Init(r2s32 *Rect, v2s32 *Dim, v2s32 *Pos)
 {
     Rect->min.x = Pos->x - (Dim->x / 2);
     Rect->min.y = Pos->y - (Dim->y / 2);
@@ -274,7 +297,7 @@ internaldef void rect_v2s32Init(rect_v2s32 *Rect, v2s32 *Dim, v2s32 *Pos)
     return;
 }
 
-internaldef b32 rect_v2s32IsInRect(rect_v2s32 *Bounds, v2s32 *Point)
+internaldef b32 r2s32IsInRect(r2s32 *Bounds, v2s32 *Point)
 {
     return ((Point->x <= Bounds->max.x) &&
             (Point->y <= Bounds->max.y) &&

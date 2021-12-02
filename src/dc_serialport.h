@@ -27,6 +27,7 @@ enum telem_type
     Telem_Data    = 2,
     Telem_Status  = 1,
     Telem_Address = 0,
+    Telem_Frame   = 3,
 };
 
 // TODO(MIGUEL): bits[3]
