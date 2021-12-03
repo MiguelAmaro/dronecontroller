@@ -400,7 +400,6 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 win32_ProcessPendingMessages(0, &g_Platform.Controls[0]);
                 
                 //~ INPUT
-                
                 //- FLIGHTSTICK
                 
                 // NOTE(MIGUEL): rename stick_is_inithalized
@@ -414,7 +413,6 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 if(g_SerialPortDevice.Connected)
                 {
-                    // TODO(MIGUEL): Find out what is causing the stall.
                     win32_SerialPort_RecieveData(&g_SerialPortDevice);
                 }
                 else
@@ -446,15 +444,13 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 if(AppCode.Update)
                 {
-                    AppCode.Update(&g_Platform, &AppRenderBuffer, &Renderer->RenderData);
+                    AppCode.Update(&g_Platform, &g_SerialPortDevice.PacketQueues, &Renderer->RenderData);
                 }
-                
                 
                 
                 RendererEndFrame(Renderer);
                 
                 //~ OUTPUT
-                
                 //- SERIALPORT
                 
                 if(g_SerialPortDevice.Connected)
@@ -479,43 +475,6 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                     
                     //printf("%d \n\r", (u32)g_SerialPortDevice.RecieveQueue);
                 }
-                
-                //- OPENGL RENDERING
-                
-                
-#if 0
-                if(g_SerialPortDevice.Connected)
-                {
-                    telem_packet Packet = TelemetryDequeuePacket(&g_SerialPortDevice,
-                                                                 Telem_QueueRecieve);
-                    
-                    
-                    if(Packet.Header.PayloadSize == 0)
-                    {
-                        int dbgint = 13;
-                        dbgint = 1408;
-                    }
-                    
-                    str8 TestString = str8Init(Packet.Payload, Packet.Header.PayloadSize);
-                    
-                    ASSERT(TestString.Count != 4294967295);
-                    
-                    RenderText(&AppState->GlyphHash,
-                               &OpenGLRenderer.Models[1],
-                               TestString,
-                               200, 299, 1, v3f32Init(1.0f, 1.0f, 0.0f));
-                }
-                
-                
-                ui_text *UIText = AppState->UIText;
-                for(u32 UITextIndex = 0; UITextIndex < AppState->UITextCount; UITextIndex++, UIText++)
-                {
-                    RenderText(&AppState->GlyphHash,
-                               &OpenGLRenderer.Models[1],
-                               UIText->String,
-                               UIText->Pos.x, UIText->Pos.x, 1, UIText->Color);
-                }
-#endif
                 
                 //~ DELAY
                 QueryPerformanceCounter(&EndTick);

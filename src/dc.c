@@ -1,5 +1,6 @@
 
 #include "dc.h"
+
 #include "dc_ui.h"
 #include "dc_math.h"
 #include "dc_strings.h"
@@ -59,6 +60,11 @@ APP_UPDATE(Update)
         Platform->QuitApp = 1;
     }
     
+    if(Platform->Controls[0].AlphaKeys[Key_o].EndedDown)
+    {
+        Entity_Create(AppState, MousePos, v2f32Init(400.0f, 60.0f), Entity_output);
+    }
+    
     if(Platform->Controls[0].AlphaKeys[Key_c].EndedDown)
     {
         // TODO(MIGUEL): Should connect to a board
@@ -83,16 +89,52 @@ APP_UPDATE(Update)
         Entity->Pos.y  = Platform->WindowHeight / 2.0f;
     }
     
+    telem_packet Packet = TelemetryDequeuePacket(PacketQueues,
+                                                 Telem_QueueRecieve);
+    
+    str8 DroneMsg = str8InitFromArenaFormated(&TextArena,
+                                              "Drone Message: %s",
+                                              Packet.Payload);
+    
     
     //~ UPDATE
     entity *Entity = AppState->Entities;
     for(u32 EntityIndex = 0; EntityIndex < AppState->EntityCount; EntityIndex++, Entity++)
     {
-        UIProccessGuage(Entity,
-                        AppState->DeltaTime,
-                        Platform->Controls->NormThrottlePos,
-                        &TextArena,
-                        RenderData);
+        switch(Entity->Type)
+        {
+            case Entity_output:
+            {
+                
+                ASSERT(DroneMsg.Count != 4294967295);
+                
+                v2f32 DeltaPos = Entity->Pos; 
+                
+                
+                r2f32 EntityRect = r2f32Init(0, &Entity->Dim, &Entity->Pos);
+                if (UIDragXY(&EntityRect, &DeltaPos, Entity))
+                {
+                    EntityRect.min = v2f32Add(EntityRect.min, v2f32Sub(DeltaPos, Entity->Pos));
+                    EntityRect.max = v2f32Add(EntityRect.max, v2f32Sub(DeltaPos, Entity->Pos));
+                }
+                
+                r2f32ConvertToDimPos(&EntityRect, &Entity->Dim, &Entity->Pos);
+                
+                PushLabel(RenderData,
+                          DroneMsg,
+                          Entity->Pos, 0.75f, v3f32Init(1.0f, 1.0f, 0.0f));
+                
+            } break;
+            case Entity_guage:
+            {
+                UIProccessGuage(Entity,
+                                AppState->DeltaTime,
+                                Platform->Controls->NormThrottlePos,
+                                &TextArena,
+                                RenderData);
+            } break;
+        }
+        
     }
     
     

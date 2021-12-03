@@ -35,3 +35,30 @@ for(u32 EntityIndex = 0; EntityIndex < AppState->EntityCount; EntityIndex++, Ent
     GL_Call(glBindVertexArray(0));
 }
 #endif
+
+
+#if 0
+u8 *Param = "Thread Started !!!\n\r";
+
+Win32State->CommThreadInfo.LogicalThreadIndex = 0;
+DWORD ThreadID;
+Win32State->CommThreadInfo.Handle = CreateThread(0, 0,
+                                                 win32_SerialPort_RecieveData,
+                                                 Param,
+                                                 0,
+                                                 &Win32State->CommThreadInfo.ID);
+#endif
+
+
+if(BytesRead == TelemetryPacket.Header.PayloadSize)
+{
+    MemoryCopy(Buffer, 256, TelemetryPacket.Payload, 256);
+    
+    TelemetryEnqueuePacket(Device, Telem_QueueRecieve, TelemetryPacket);
+}
+
+MemorySet(&Device->Overlapped,
+          sizeof(Device->Overlapped),
+          0);
+
+MemorySet(Buffer, 256, 0);

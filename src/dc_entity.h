@@ -9,6 +9,7 @@ typedef enum entity_type entity_type;
 enum entity_type
 {
     Entity_guage,
+    Entity_output,
 };
 
 typedef struct entity entity;

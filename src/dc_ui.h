@@ -117,4 +117,6 @@ void UIProccessGuage(entity *Entity,
                      memory_arena *TextArena,
                      render_data *RenderData);
 
+b32
+UIDragXY(r2f32 *Bounds, v2f32 *Pos, void *ID);
 #endif //DC_UI_H

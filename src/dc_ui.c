@@ -208,7 +208,7 @@ UIButtonLogicDown(void *ID, b32 Over)
 
 
 // a generic draggable rectangle... if you want its position clamped, do so yourself
-internaldef b32
+b32
 UIDragXY(r2f32 *Bounds, v2f32 *Pos, void *ID)
 {
     b32 Result = 0;
@@ -313,30 +313,6 @@ UIDragCorner(v2f32 *Corner, f32 HandleWidth, void *ID)
     
     return Result;
 }
-
-
-#if 0
-internaldef void
-UITextPush(app_state *AppState, memory_arena *Arena,
-           str8 String, u32 EntityIndex,
-           v2f32 Pos, f32 Scale, v3f32 Color)
-{
-    ui_text *UIText = AppState->UIText + AppState->UITextCount++;
-    
-    UIText->Pos      = Pos;
-    UIText->Color    = Color;
-    UIText->Scale    = Scale;
-    UIText->EntityID = EntityIndex;
-    
-    UIText->String.Data  = MEMORY_ARENA_PUSH_ARRAY(Arena, String.Count, u8);
-    UIText->String.Count = String.Count;
-    
-    MemoryCopy(String.Data, String.Count,
-               UIText->String.Data, UIText->String.Count);
-    
-    return;
-}
-#endif
 
 void *RelID(void *OwnerID, void *SubID)
 {

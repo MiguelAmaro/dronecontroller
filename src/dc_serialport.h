@@ -1,72 +1,20 @@
 // NOTE(MIGUEL): Should This code go in the windows platfom layer?? and i just keep abastractions and generics here
 
-#define DEVICE_QUEUE_SIZE 256
 
 // 2 Byte header
 // payload
 
-typedef struct telem_packet_header telem_packet_header;
-struct telem_packet_header
-{
-    u8 Info;
-    u8 PayloadSize;
-};
-
-
-typedef struct telem_packet telem_packet;
-struct telem_packet
-{
-    telem_packet_header Header;
-    u8                  Payload[256];
-};
-
-// TODO(MIGUEL): bits[2]
-typedef enum telem_type telem_type;
-enum telem_type
-{
-    Telem_Data    = 2,
-    Telem_Status  = 1,
-    Telem_Address = 0,
-    Telem_Frame   = 3,
-};
-
-// TODO(MIGUEL): bits[3]
-typedef enum telem_data_type telem_data_type;
-enum telem_data_type
-{
-    Telem_s8    = 0,
-    Telem_u8    = 1,
-    Telem_u32   = 2,
-    Telem_str8  = 3,
-    Telem_f32   = 4,
-    Telem_v3f32 = 5,
-    Telem_s32   = 6,
-};
-
-typedef enum telem_state telem_state;
-enum telem_state
-{
-    Telem_Ack
-};
-
-typedef enum telem_queue telem_queue;
-enum telem_queue
-{
-    Telem_QueueRecieve  = 0,
-    Telem_QueueTransmit = 1,
-};
+#include "dc_telemetry.h"
 
 typedef struct device device;
 struct device
 {
-    HANDLE StreamHandle;
     b32    Connected;
+    HANDLE StreamHandle;
+    HANDLE StreamEventHandle;
+    OVERLAPPED Overlapped;
     
-    telem_packet PacketQueue[2][DEVICE_QUEUE_SIZE];
-    u32          PacketQueueMaxCount [2];
-    u32          PacketQueueCount    [2];
-    u32          PacketQueueHead     [2]; 
-    u32          PacketQueueTail     [2]; 
+    telem_packet_queues PacketQueues;
     
     u16 padding;
 };
@@ -105,17 +53,6 @@ PRINTF_BYTE_TO_BINARY_INT32((i) >> 32), PRINTF_BYTE_TO_BINARY_INT32(i)
 /* --- end macros --- */
 
 
-void DeviceReadCallback(DWORD        ErrorCode,
-                        DWORD        ByteTransferCount,
-                        LPOVERLAPPED Overlapped)
-{
-    
-    
-    DebugOutputString("Device IO: ");
-    
-    return;
-}
-
 void ManageReadRequests()
 {
 #if 0
@@ -139,59 +76,6 @@ void ManageReadRequests()
     return;
 }
 
-internaldef void
-TelemetryEnqueuePacket(device *Device,
-                       telem_queue Direction,
-                       telem_packet Packet)
-{
-    telem_packet *Queue = Device->PacketQueue         [Direction];
-    u32        MaxCount =  Device->PacketQueueMaxCount[Direction];
-    u32          *Count = &Device->PacketQueueCount   [Direction];
-    u32           *Tail = &Device->PacketQueueTail    [Direction]; 
-    
-    if(*Count < MaxCount)
-    {
-        telem_packet *Entry = &Queue[*Tail];
-        *Entry = Packet;
-        
-        *Tail = ++*Tail % MaxCount;
-        ++*Count;
-    }
-    
-    ASSERT(*Count < MaxCount);
-    ASSERT(*Count >= 0);
-    
-    return;
-}
-
-internaldef telem_packet
-TelemetryDequeuePacket(device *Device,
-                       telem_queue Direction)
-{
-    
-    telem_packet Result = { 0 };
-    
-    telem_packet *Queue = Device->PacketQueue         [Direction];
-    u32        MaxCount =  Device->PacketQueueMaxCount[Direction];
-    u32          *Count = &Device->PacketQueueCount   [Direction];
-    u32           *Head = &Device->PacketQueueHead    [Direction]; 
-    
-    if(*Count > 0)
-    {
-        telem_packet *Entry = &Queue[*Head];
-        Result = *Entry;
-        
-        *Head = ++*Head % MaxCount;
-        --*Count;
-    }
-    
-    
-    ASSERT(*Count < MaxCount);
-    ASSERT(*Count >= 0);
-    
-    
-    return Result;
-}
 
 void
 win32_SerialPort_CloseDevice(device *Device, win32_state *Win32State)
@@ -205,50 +89,71 @@ win32_SerialPort_CloseDevice(device *Device, win32_state *Win32State)
     
     return;
 }
-#define TELEM_PACKET_HEADER_SIZE 2
 
 void
 win32_SerialPort_RecieveData(device *Device)
 {
-    telem_packet TelemetryPacket = { 0 };
+    local_persist b32 FirstRead = 1;
+    local_persist u8 Buffer[TELEM_PACKET_HEADER_SIZE + TELEM_PAYLOAD_MAXSIZE] = { 0 };
     
-    DWORD BytesToRead = 0;
+    DWORD BytesToRead = TELEM_PACKET_HEADER_SIZE + TELEM_PAYLOAD_MAXSIZE;
     DWORD BytesRead   = 0;
-    b32   ReceptionSuccessful = 0;
+    u32   Event       = 0;
+    b32   ExpectingHeader = 1;
     
-    BytesToRead = TELEM_PACKET_HEADER_SIZE;
-    ReceptionSuccessful = ReadFile(Device->StreamHandle,
-                                   &TelemetryPacket.Header,
-                                   BytesToRead,
-                                   &BytesRead,
-                                   NULL);
-    
-    if(!ReceptionSuccessful)
-    { 
-        Device->Connected = 0;
-        
-        return;
-    }
-    
-    u8 Buffer[256] = { 0 };
-    BytesRead   = 0;
-    BytesToRead = TelemetryPacket.Header.PayloadSize;
-    
-#if 0
-    ReadFileEx(Device->StreamHandle,
-               Buffer,
-               BytesToRead,
-               &BytesRead,
-               );
-    
-#endif
-    if(BytesRead == TelemetryPacket.Header.PayloadSize)
+    if(WaitCommEvent(Device->StreamHandle,
+                     &Event,
+                     &Device->Overlapped))
     {
-        MemoryCopy(Buffer, 256, TelemetryPacket.Payload, 256);
         
-        TelemetryEnqueuePacket(Device, Telem_QueueRecieve, TelemetryPacket);
+        u32 BytesTransfered;
+        GetOverlappedResult(Device->StreamHandle,
+                            &Device->Overlapped,
+                            &BytesTransfered,
+                            FALSE);
+        DWORD Result = GetLastError();
+        if((Result != ERROR_IO_PENDING) &&
+           (Result != ERROR_IO_INCOMPLETE))
+        {
+            if(Event & EV_RXCHAR)
+            {
+                ReadFile(Device->StreamHandle,
+                         Buffer,
+                         sizeof(telem_packet_header),
+                         &BytesRead,
+                         0);
+            }
+            
+            telem_packet_header *PacketHeader =
+                (telem_packet_header *)Buffer;
+            
+            
+            Device->StreamEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
+            
+            ReadFile(Device->StreamHandle,
+                     Buffer + sizeof(telem_packet_header),
+                     PacketHeader->PayloadSize,
+                     &BytesRead,
+                     &Device->Overlapped);
+        }
     }
     
+    if( WaitForSingleObject(Device->StreamEventHandle, 0))
+    {
+        telem_packet *TelemetryPacket = (telem_packet *)Buffer;
+        
+        TelemetryEnqueuePacket(&Device->PacketQueues, Telem_QueueRecieve, *TelemetryPacket);
+        
+        MemorySet(&Device->Overlapped,
+                  sizeof(Device->Overlapped),
+                  0);
+        
+        MemorySet(Buffer, 256, 0);
+    }
+    else
+    {
+        ASSERT(ERROR_IO_PENDING == GetLastError());
+    }
     
     return;
 }
@@ -310,27 +215,16 @@ win32_SerialPort_InitDevice(win32_state *Win32State, device *Device)
     { return 0; }
     
     Device->Connected = 1;
-    Device->PacketQueueHead    [0] = 0;
-    Device->PacketQueueTail    [0] = 0;
-    Device->PacketQueueCount   [0] = 0;
-    Device->PacketQueueMaxCount[0] = DEVICE_QUEUE_SIZE;
+    Device->PacketQueues.QueueHead    [0] = 0;
+    Device->PacketQueues.QueueTail    [0] = 0;
+    Device->PacketQueues.QueueCount   [0] = 0;
+    Device->PacketQueues.QueueMaxCount[0] = DEVICE_QUEUE_SIZE;
     
-    Device->PacketQueueHead    [1] = 0;
-    Device->PacketQueueTail    [1] = 0;
-    Device->PacketQueueCount   [1] = 0;
-    Device->PacketQueueMaxCount[1] = DEVICE_QUEUE_SIZE;
+    Device->PacketQueues.QueueHead    [1] = 0;
+    Device->PacketQueues.QueueTail    [1] = 0;
+    Device->PacketQueues.QueueCount   [1] = 0;
+    Device->PacketQueues.QueueMaxCount[1] = DEVICE_QUEUE_SIZE;
     
-#if 0
-    u8 *Param = "Thread Started !!!\n\r";
-    
-    Win32State->CommThreadInfo.LogicalThreadIndex = 0;
-    DWORD ThreadID;
-    Win32State->CommThreadInfo.Handle = CreateThread(0, 0,
-                                                     win32_SerialPort_RecieveData,
-                                                     Param,
-                                                     0,
-                                                     &Win32State->CommThreadInfo.ID);
-#endif
     return 1;
 }
 
