@@ -98,6 +98,29 @@ str8AppendBtoA(str8 *A, u32 ASize, str8 B)
 }
 
 
+void
+str8Concat(size_t SourceACount, char *SourceA,
+           size_t SourceBCount, char *SourceB,
+           size_t DestCount   , char *Dest    )
+{
+    // TODO(MIGUEL): Dest bounds checking!
+    
+    for(u32 Index = 0; Index < SourceACount; Index++)
+    {
+        *Dest++ = *SourceA++;
+    }
+    
+    for(u32 Index = 0; Index < SourceBCount; Index++)
+    {
+        *Dest++ = *SourceB++;
+    }
+    
+    *Dest++ = 0;
+    
+    return;
+}
+
+
 //- UTILS 
 
 void 

@@ -3,7 +3,6 @@
 #ifndef FLIGHTCONTROL_ENTITY_H
 #define FLIGHTCONTROL_ENTITY_H
 
-#include "dc.h"
 #include "dc_math.h"
 
 typedef enum entity_type entity_type;

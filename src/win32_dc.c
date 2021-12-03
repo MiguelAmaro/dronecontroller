@@ -32,6 +32,117 @@ PLATFORM_SET_CAPTURE(PlatformSetCapture)
 }
 #endif
 
+typedef struct win32_app_code win32_app_code;
+struct win32_app_code
+{
+    HMODULE     APP_DLL;
+    app_update *Update;
+    b32         IsValid;
+    FILETIME    DLLLastWriteTime;
+};
+
+static FILETIME
+win32_GetLastWriteTime(char *FileName)
+{
+    FILETIME LastWriteTime = { 0 };
+    
+    WIN32_FILE_ATTRIBUTE_DATA FileInfo;
+    
+    if(GetFileAttributesEx((const char *)FileName,
+                           GetFileExInfoStandard,
+                           &FileInfo))
+    {
+        LastWriteTime = FileInfo.ftLastWriteTime;
+    }
+    
+    return LastWriteTime;
+}
+
+
+static void
+win32_HotUnloadAppCode(win32_app_code *App)
+{
+    if(App)
+    {
+        FreeLibrary(App->APP_DLL);
+    }
+    
+    App->IsValid = false;
+    App->Update  = 0;
+    
+    return;
+}
+
+
+static win32_app_code
+win32_HotLoadAppCode(char *SourceDLLName, char *TempDLLName, char *LockedFileName)
+{
+    win32_app_code Result = { 0 };
+    
+    WIN32_FILE_ATTRIBUTE_DATA Ignored;
+    if(!GetFileAttributesEx((const char *)LockedFileName,
+                            GetFileExInfoStandard,
+                            &Ignored))
+    {
+        Result.DLLLastWriteTime = win32_GetLastWriteTime(SourceDLLName);
+        
+        DeleteFile(TempDLLName);
+        CopyFile((const char *)SourceDLLName,
+                 (const char *)TempDLLName, FALSE);
+        // TODO(MIGUEL): Hotswap this like the shaders
+        Sleep(300);
+        Result.APP_DLL = LoadLibraryA((const char *)TempDLLName);
+        
+        if(Result.APP_DLL)
+        {
+            Result.Update = (app_update *)GetProcAddress(Result.APP_DLL, "Update");
+            
+            Result.IsValid = (Result.Update != NULL);
+        }
+    }
+    if(!(Result.IsValid))
+    {
+        Result.Update = 0;
+    }
+    
+    return Result;
+}
+
+
+static void
+win32_GetExeFileName(win32_state *State)
+{
+    u32 FileNameSize = GetModuleFileNameA(0,
+                                          (LPSTR)State->ExeFileName,
+                                          sizeof(State->ExeFileName));
+    
+    State->OnePastLastExeFileNameSlash = State->ExeFileName;
+    
+    for(char *Scan = (char *)State->ExeFileName; *Scan; ++Scan)
+    {
+        if(*Scan == '\\')
+        {
+            State->OnePastLastExeFileNameSlash = Scan + 1;
+        }
+    }
+    
+    return;
+}
+
+static void
+win32_BuildExePathFileName(win32_state *State,
+                           char *FileName,
+                           int DestCount, char *Dest)
+{
+    str8Concat(State->OnePastLastExeFileNameSlash - State->ExeFileName,
+               State->ExeFileName,
+               str8GetCStrLength(FileName), FileName,
+               DestCount, Dest);
+    
+    return;
+}
+
+
 LRESULT CALLBACK 
 win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l_param) {
     LRESULT Result = 0;
@@ -230,8 +341,23 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         
         g_Platform.TargetSecondsPerFrame = 60.0f;
         
+        //App_Init(&g_Platform);
         
-        App_Init(&g_Platform);
+        win32_GetExeFileName(&g_Win32State);
+        
+        char AppCodeDLLFullPathSource[MAX_PATH];
+        win32_BuildExePathFileName(&g_Win32State, "dc.dll",
+                                   sizeof(AppCodeDLLFullPathSource), AppCodeDLLFullPathSource);
+        
+        char AppCodeDLLFullPathTemp  [MAX_PATH];
+        win32_BuildExePathFileName(&g_Win32State, "dc_temp.dll",
+                                   sizeof(AppCodeDLLFullPathTemp), AppCodeDLLFullPathTemp);
+        
+        char AppCodeDLLFullPathLock  [MAX_PATH];
+        win32_BuildExePathFileName(&g_Win32State, "lock.tmp",
+                                   sizeof(AppCodeDLLFullPathLock), AppCodeDLLFullPathLock);
+        
+        win32_app_code AppCode;
         
         if(Window)
         {
@@ -306,7 +432,24 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 AppRenderBuffer.Height        = g_BackBuffer.Height;
                 AppRenderBuffer.BytesPerPixel = g_BackBuffer.BytesPerPixel;
                 
-                App_Update(&g_Platform, &AppRenderBuffer, &Renderer->RenderData);
+                
+                FILETIME NewDLLWriteTime = win32_GetLastWriteTime(AppCodeDLLFullPathSource);
+                {
+                    if(CompareFileTime(&NewDLLWriteTime, &AppCode.DLLLastWriteTime))
+                    {
+                        win32_HotUnloadAppCode(&AppCode);
+                        AppCode = win32_HotLoadAppCode(AppCodeDLLFullPathSource,
+                                                       AppCodeDLLFullPathTemp,
+                                                       AppCodeDLLFullPathLock);
+                    }
+                }
+                
+                if(AppCode.Update)
+                {
+                    AppCode.Update(&g_Platform, &AppRenderBuffer, &Renderer->RenderData);
+                }
+                
+                
                 
                 RendererEndFrame(Renderer);
                 

@@ -147,32 +147,32 @@ internaldef f32 v2f32Inner(v2f32 A, v2f32 B)
 }
 
 
-internaldef v2f32 v2f32Sub(v2f32 *A, v2f32 *B)
+internaldef v2f32 v2f32Sub(v2f32 A, v2f32 B)
 {
     v2f32 Result = { 0 };
     
-    Result = v2f32Init(A->x - B->x,
-                       A->y - B->y);
+    Result = v2f32Init(A.x - B.x,
+                       A.y - B.y);
     
     return Result;
 }
 
-internaldef v2f32 v2f32Add(v2f32 *A, v2f32 *B)
+internaldef v2f32 v2f32Add(v2f32 A, v2f32 B)
 {
     v2f32 Result = { 0 };
     
-    Result = v2f32Init(A->x + B->x,
-                       A->y + B->y);
+    Result = v2f32Init(A.x + B.x,
+                       A.y + B.y);
     
     return Result;
 }
 
-internaldef v2f32 v2f32Addxy(v2f32 *A, f32 x, f32 y)
+internaldef v2f32 v2f32Addxy(v2f32 A, f32 x, f32 y)
 {
     v2f32 Result = { 0 };
     
-    Result = v2f32Init(A->x + x,
-                       A->y + y);
+    Result = v2f32Init(A.x + x,
+                       A.y + y);
     
     return Result;
 }

@@ -40,7 +40,7 @@ void main()
     float ThrottleMask = float(ThrottleValue > ClipSpaceCoordsX);
     
     vec4 Color;
-    Color += vec4(ThrottleValue, 1.0f - ClipSpaceCoordsX, 0.0f, 1.0f) * ThrottleMask;
+    Color += vec4(ThrottleValue, 1.0f - ClipSpaceCoordsX, 0.7f - (0.7f * ThrottleValue), 1.0f) * ThrottleMask;
     Color += vec4(0.3f, 0.0f, 0.3f, 0.08f) * (1.0 - ThrottleMask);
     
     FragColor = vec4(Color);

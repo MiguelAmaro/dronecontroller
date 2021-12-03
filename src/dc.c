@@ -1,9 +1,8 @@
-#include "dc.h"
 
+#include "dc.h"
+#include "dc_ui.h"
 #include "dc_math.h"
 #include "dc_strings.h"
-#include "dc_ui.h"
-#include "dc_opengl.h"
 #include "dc_entity.h"
 #include <stdio.h>
 #include <math.h>
@@ -16,6 +15,7 @@ u32 Entity_Create(app_state *AppState, v2f32 Pos , v2f32 Dim, entity_type Type)
     
     entity *Entity = AppState->Entities + AppState->EntityCount;
     
+    Entity->Index = AppState->EntityCount;
     Entity->Type = Type;
     Entity->Dim = Dim;
     Entity->Pos = Pos;
@@ -29,8 +29,7 @@ App_Init(platform *Platform_)
     return;
 }
 
-void 
-App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderData)
+APP_UPDATE(Update)
 {
     app_state *AppState = (app_state *)Platform->PermanentStorage;
     
@@ -91,16 +90,32 @@ App_Update(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderDa
     {
         
 #if 0
-        rect_v2f32 EntityBounds = { 0 };
+        r2f32 EntityBounds = { 0 };
         
-        rect_v2f32Init(&EntityBounds, &Entity->Dim, &Entity->Pos);
+        r2f32Init(&EntityBounds, &Entity->Dim, &Entity->Pos);
         
-        UIButtonLogic(Entity, rect_v2f32IsInRect(&EntityBounds, &MousePos));
+        UIButtonLogic(Entity, r2f32IsInRect(&EntityBounds, &MousePos));
         
         if(UIIsActive(Entity))
         {
             Entity->Pos = MousePos;
         }
+        
+        PushGuage(RenderData,
+                  Entity->Pos,
+                  Entity->Dim,
+                  Platform->Controls->NormThrottlePos);
+        
+        str8 Test = str8InitFromArenaFormated(&TextArena,
+                                              " Throttle: %2.2f%",
+                                              100.0f * Platform->Controls->NormThrottlePos);
+        
+        PushLabel(RenderData,
+                  Test,
+                  v2f32Addxy(Entity->Pos, (-Entity->Dim.x / 2.0f), -60.0f),
+                  0.8f,
+                  v3f32Init(1.0f, 0.0f, 2.0f));
+        
         
 #else
         UIProccessGuage(Entity,

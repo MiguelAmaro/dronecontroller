@@ -21,6 +21,9 @@ str8 str8Init(u8 *String, u32 Count);
 str8 str8InitFromArena(memory_arena *Arena, u8 *String);
 str8 str8InitFromArenaFormated(memory_arena *Arena, u8* Format, ...);
 void str8RemoveFromEndToChar  (u8 Char, str8 *A);
+void str8Concat(size_t SourceACount, char *SourceA,
+                size_t SourceBCount, char *SourceB,
+                size_t DestCount   , char *Dest    );
 
 //- UTILS 
 

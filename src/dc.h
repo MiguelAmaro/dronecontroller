@@ -5,6 +5,7 @@
 
 #include "dc_platform.h"
 #include "dc_entity.h"
+#include "dc_render_commands.h"
 #include "dc_memory.h"
 #include "dc_ui.h"
 
@@ -37,10 +38,15 @@ struct app_backbuffer
     s32   BytesPerPixel;
 };
 
-#include "dc.c"
 
-void App_Init  (platform *Platform_);
-void App_Update(platform *Platform_, app_backbuffer *Backbuffer, render_data *RenderData);
+
+#define APP_UPDATE( name) void name(platform *Platform, app_backbuffer *Backbuffer, render_data *RenderData)
+typedef APP_UPDATE(app_update);
+APP_UPDATE(app_update_stub)
+{ return; }
+
+//void App_Init  (platform *Platform_);
+//void App_Update(platform *Platform_, app_backbuffer *Backbuffer, render_data *RenderData);
 
 
 #endif //DRONECONTROLLER_H

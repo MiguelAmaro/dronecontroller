@@ -36,6 +36,9 @@ struct win32_state
     b32 InputRecordIndex;
     
     win32_thread_info CommThreadInfo;
+    
+    char  ExeFileName[MAX_PATH];
+    char *OnePastLastExeFileNameSlash;
 };
 
 #endif //WIN32_DRONECONTROLLER_H

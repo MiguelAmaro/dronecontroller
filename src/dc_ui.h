@@ -6,6 +6,7 @@
 #define UITEXT_MAX_COUNT 256
 
 #include "dc_strings.h"
+#include "dc_render_commands.h"
 
 #define ID2(x)   (1 + (u8 *)(x))
 #define ID3(x)   (2 + (u8 *)(x))
@@ -106,6 +107,14 @@ struct ui_text
     f32 Scale;
 };
 
-#include "dc_ui.c"
+void UIBeginFrame(platform *Platform);
+void UIEndFrame(void);
+void UIClear(void);
+b32  UIButtonLogic(void *ID, b32 Over);
+void UIProccessGuage(entity *Entity,
+                     f32 dt,
+                     f32 NormThrottlePos,
+                     memory_arena *TextArena,
+                     render_data *RenderData);
 
 #endif //DC_UI_H
