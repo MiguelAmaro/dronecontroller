@@ -77,8 +77,16 @@ internaldef b32 win32_DirectInput_init(HWND window, HINSTANCE instance)
     
     ASSERT(win32_DirectInputLogError(Result, "Enumerate Devices And Fetch Desired One"));
     
-    win32_InitController(&g_Flightstick, stick,    window);
-    win32_InitController(&g_Throttle   , throttle, window);
+    if(g_Flightstick.Interface)
+    {
+        win32_InitController(&g_Flightstick, stick,    window);
+    }
+    if(g_Throttle.Interface)
+    {
+        win32_InitController(&g_Throttle   , throttle, window);
+    }
+    
+    
     return 1;
 }
 

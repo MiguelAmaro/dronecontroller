@@ -88,43 +88,11 @@ APP_UPDATE(Update)
     entity *Entity = AppState->Entities;
     for(u32 EntityIndex = 0; EntityIndex < AppState->EntityCount; EntityIndex++, Entity++)
     {
-        
-#if 0
-        r2f32 EntityBounds = { 0 };
-        
-        r2f32Init(&EntityBounds, &Entity->Dim, &Entity->Pos);
-        
-        UIButtonLogic(Entity, r2f32IsInRect(&EntityBounds, &MousePos));
-        
-        if(UIIsActive(Entity))
-        {
-            Entity->Pos = MousePos;
-        }
-        
-        PushGuage(RenderData,
-                  Entity->Pos,
-                  Entity->Dim,
-                  Platform->Controls->NormThrottlePos);
-        
-        str8 Test = str8InitFromArenaFormated(&TextArena,
-                                              " Throttle: %2.2f%",
-                                              100.0f * Platform->Controls->NormThrottlePos);
-        
-        PushLabel(RenderData,
-                  Test,
-                  v2f32Addxy(Entity->Pos, (-Entity->Dim.x / 2.0f), -60.0f),
-                  0.8f,
-                  v3f32Init(1.0f, 0.0f, 2.0f));
-        
-        
-#else
         UIProccessGuage(Entity,
                         AppState->DeltaTime,
                         Platform->Controls->NormThrottlePos,
                         &TextArena,
                         RenderData);
-#endif
-        
     }
     
     

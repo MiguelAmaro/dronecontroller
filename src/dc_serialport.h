@@ -104,6 +104,41 @@ PRINTF_BINARY_PATTERN_INT32             PRINTF_BINARY_PATTERN_INT32
 PRINTF_BYTE_TO_BINARY_INT32((i) >> 32), PRINTF_BYTE_TO_BINARY_INT32(i)
 /* --- end macros --- */
 
+
+void DeviceReadCallback(DWORD        ErrorCode,
+                        DWORD        ByteTransferCount,
+                        LPOVERLAPPED Overlapped)
+{
+    
+    
+    DebugOutputString("Device IO: ");
+    
+    return;
+}
+
+void ManageReadRequests()
+{
+#if 0
+    if(GetOverlappedResult(
+                           [in]  HANDLE       hFile,
+                           [in]  LPOVERLAPPED lpOverlapped,
+                           [out] LPDWORD      lpNumberOfBytesTransferred,
+                           [in]  BOOL         bWait
+                           ))
+    {
+        // NOTE(MIGUEL): IO Request was Completed!!!
+        ReadFileEx();
+    }
+    else
+    {
+        // NOTE(MIGUEL): IO Request pending
+        //do nothing
+    }
+    
+#endif
+    return;
+}
+
 internaldef void
 TelemetryEnqueuePacket(device *Device,
                        telem_queue Direction,
@@ -175,7 +210,6 @@ win32_SerialPort_CloseDevice(device *Device, win32_state *Win32State)
 void
 win32_SerialPort_RecieveData(device *Device)
 {
-#if 1
     telem_packet TelemetryPacket = { 0 };
     
     DWORD BytesToRead = 0;
@@ -200,12 +234,14 @@ win32_SerialPort_RecieveData(device *Device)
     BytesRead   = 0;
     BytesToRead = TelemetryPacket.Header.PayloadSize;
     
-    ReadFile(Device->StreamHandle,
-             Buffer,
-             BytesToRead,
-             &BytesRead,
-             NULL);
+#if 0
+    ReadFileEx(Device->StreamHandle,
+               Buffer,
+               BytesToRead,
+               &BytesRead,
+               );
     
+#endif
     if(BytesRead == TelemetryPacket.Header.PayloadSize)
     {
         MemoryCopy(Buffer, 256, TelemetryPacket.Payload, 256);
@@ -213,7 +249,6 @@ win32_SerialPort_RecieveData(device *Device)
         TelemetryEnqueuePacket(Device, Telem_QueueRecieve, TelemetryPacket);
     }
     
-#endif 
     
     return;
 }
