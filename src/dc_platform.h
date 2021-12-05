@@ -41,8 +41,10 @@ enum platfrom_key
 typedef struct input_button_state input_button_state;
 struct input_button_state
 {
+    b32 IsDown;
+    b32 IsPressedNow;
+    b32 IsReleasedNow;
     u32 HalfTransitionCount; // button half transition
-    b32 EndedDown;
 };
 
 typedef struct input_src input_src;

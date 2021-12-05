@@ -202,9 +202,12 @@ win32_Main_Window_Procedure(HWND Window, UINT Message , WPARAM w_param, LPARAM l
 internaldef void
 win32_ProcessKeyboardMessage(input_button_state *NewState, b32 IsDown)
 {
-    if(NewState->EndedDown != IsDown)
+    
+    if(NewState->IsDown != IsDown)
     {
-        NewState->EndedDown = IsDown;
+        NewState->IsPressedNow  = IsDown;
+        NewState->IsReleasedNow = !IsDown;
+        NewState->IsDown = IsDown;
         ++NewState->HalfTransitionCount;
     }
     
@@ -212,7 +215,7 @@ win32_ProcessKeyboardMessage(input_button_state *NewState, b32 IsDown)
 }
 
 internaldef void
-win32_ProcessPendingMessages(win32_state *State, input_src *Keyboard)
+win32_ProcessPendingMessages(win32_state *State, input_src *Keyboard, u32 *KeyMsgCount)
 {
     MSG Message;
     
@@ -248,16 +251,16 @@ win32_ProcessPendingMessages(win32_state *State, input_src *Keyboard)
             case WM_KEYDOWN   :
             case WM_KEYUP     :
             {
+                (*KeyMsgCount)++;
                 KeyIndex  = 0;
                 
                 KeyCode       = (u32)Message.wParam;
-                KeyIsDown     = ((Message.lParam & (1 << 31)) == 0);
-                KeyWasDown    = ((Message.lParam & (1 << 30)) != 0);
-                KeyAltWasDown = ( Message.lParam & (1 << 29));
+                KeyIsDown     = ((Message.lParam & (1UL << 31)) == 0);
+                KeyWasDown    = ((Message.lParam & (1   << 30)) != 0);
+                KeyAltWasDown = ( Message.lParam & (1   << 29));
                 
                 if(KeyWasDown != KeyIsDown)
                 {
-                    
                     if(KeyCode >= 'A' && KeyCode <= 'Z')
                     { 
                         KeyIndex = Key_a + (KeyCode - 'A');
@@ -363,7 +366,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         {
             render_constraints Constraints =
             { 
-                .QuadMaxCountPerFrame = 256,
+                .QuadMaxCountPerFrame = 4096,
             };
             
             
@@ -374,7 +377,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
             
             app_state *AppState = (app_state *)g_Platform.PermanentStorage;
             
-            win32_SerialPort_InitDevice(&g_Win32State, &g_SerialPortDevice);
+            win32_SerialPortInitDevice(&g_SerialPortDevice);
             // TODO(MIGUEL): Set initialization to individual controller structures
             g_Platform.StickIsInitialized        = win32_DirectInput_init(Window, Instance);
             
@@ -396,8 +399,14 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 s64 DesiredTicksPerFrame = Frequency / g_Platform.TargetSecondsPerFrame;
                 QueryPerformanceCounter(&StartTick);
                 
-                
-                win32_ProcessPendingMessages(0, &g_Platform.Controls[0]);
+                u32 KeyMsgCount = 0;
+                win32_ProcessPendingMessages(0, &g_Platform.Controls[0], &KeyMsgCount);
+                if(KeyMsgCount > 0)
+                {
+                    printf("Number of Key Message: %d \n", KeyMsgCount);
+                    
+                }
+                //printf("looping", KeyMsgCount);
                 
                 //~ INPUT
                 //- FLIGHTSTICK
@@ -411,14 +420,8 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 
                 //- SERIALPORT 
                 
-                if(g_SerialPortDevice.Connected)
-                {
-                    win32_SerialPort_RecieveData(&g_SerialPortDevice);
-                }
-                else
-                {
-                    win32_SerialPort_InitDevice(&g_Win32State, &g_SerialPortDevice);
-                }
+                win32_SerialPortFSM(&g_SerialPortDevice, &g_Platform);
+                
                 
                 //~ PROCESSING
                 
@@ -453,28 +456,30 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 //~ OUTPUT
                 //- SERIALPORT
                 
-                if(g_SerialPortDevice.Connected)
+                f32 ThrottleValue = g_Platform.Controls[0].NormThrottlePos;
+                
+                telem_packet Packet = { 0 };
+                Packet.Header.Info = (u8)((Telem_Data << 6) |
+                                          (Telem_f32  << 3)); 
+                
+                MemoryCopy((u8 *)&ThrottleValue, sizeof(f32),
+                           Packet.Payload, 256);
+                
+                
+                for(u32 Key = Key_NULL; Key < Key_MAX; Key++)
                 {
-                    f32 ThrottleValue = g_Platform.Controls[0].NormThrottlePos;
+                    g_Platform.Controls[0].AlphaKeys[Key].IsPressedNow  = 0;
+                    g_Platform.Controls[0].AlphaKeys[Key].IsReleasedNow = 0;
                     
-                    telem_packet Packet = { 0 };
-                    Packet.Header.Info = (u8)((Telem_Data << 6) |
-                                              (Telem_f32  << 3)); 
-                    
-                    MemoryCopy((u8 *)&ThrottleValue, sizeof(f32),
-                               Packet.Payload, 256);
-                    
-                    win32_SerialPort_SendData(&g_SerialPortDevice, Packet);
                 }
-                else
+                
+                for(u32 Key = 0; Key < 6; Key++)
                 {
-                    win32_SerialPort_InitDevice(&g_Win32State, &g_SerialPortDevice);
-                }
-                if(g_SerialPortDevice.Connected)
-                {
+                    g_Platform.Controls[0].NavKeys[Key].IsPressedNow  = 0;
+                    g_Platform.Controls[0].NavKeys[Key].IsReleasedNow = 0;
                     
-                    //printf("%d \n\r", (u32)g_SerialPortDevice.RecieveQueue);
                 }
+                
                 
                 //~ DELAY
                 QueryPerformanceCounter(&EndTick);
@@ -497,7 +502,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 }
             }
             
-            win32_SerialPort_CloseDevice(&g_SerialPortDevice, &g_Win32State);
+            win32_SerialPortCloseDevice(&g_SerialPortDevice, &g_Win32State);
             
             FreeConsole();
         }

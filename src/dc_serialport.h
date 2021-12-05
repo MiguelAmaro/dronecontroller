@@ -12,8 +12,10 @@ struct device
     b32    Connected;
     HANDLE StreamHandle;
     HANDLE StreamEventHandle;
-    OVERLAPPED Overlapped;
+    OVERLAPPED AsyncRxIOInfo;
+    OVERLAPPED AsyncTxIOInfo;
     
+    telem_state         State;
     telem_packet_queues PacketQueues;
     
     u16 padding;
@@ -78,7 +80,7 @@ void ManageReadRequests()
 
 
 void
-win32_SerialPort_CloseDevice(device *Device, win32_state *Win32State)
+win32_SerialPortCloseDevice(device *Device, win32_state *Win32State)
 {
     Device->Connected = 0;
     
@@ -90,9 +92,91 @@ win32_SerialPort_CloseDevice(device *Device, win32_state *Win32State)
     return;
 }
 
-void
-win32_SerialPort_RecieveData(device *Device)
+b32 win32_SerialPortHandshake(device *Device, b32 InitiateHandshake)
 {
+    b32 HandshakeSuccesful = 0;
+    
+    local_persist b32 HandshakePingSent = 0;
+    local_persist u8  HandshakePing     = TELEM_STATUS_PING;
+    local_persist u8  HandshakeFinalAck = Telem_Ack;
+    local_persist u32 BytesWritten = 0;
+    local_persist u32 BytesRead    = 0;
+    
+    if(InitiateHandshake == 1 ||
+       HandshakePingSent == 0)
+    {
+        WriteFile(Device->StreamHandle,
+                  &HandshakePing,
+                  sizeof(u8),
+                  &BytesWritten,
+                  &Device->AsyncTxIOInfo);
+        
+        printf("sending ping...\n");
+        printf("expecting "
+               "Ping:" PRINTF_BINARY_PATTERN_INT8" and "
+               "ACK:"  PRINTF_BINARY_PATTERN_INT8
+               " ...\n",
+               PRINTF_BYTE_TO_BINARY_INT8(TELEM_STATUS_PING),
+               PRINTF_BYTE_TO_BINARY_INT8(Telem_Ack));
+        HandshakePingSent = 1;
+    }
+    
+    if(HandshakePingSent == 1)
+    {
+        local_persist u8 Buffer[2];
+        
+        
+        ReadFile(Device->StreamHandle,
+                 &Buffer,
+                 sizeof(u8) * 2,
+                 NULLPTR,
+                 &Device->AsyncRxIOInfo);
+        
+        if((Buffer[0] == TELEM_STATUS_PING) &&
+           (Buffer[1] == Telem_Ack))
+        {
+            WriteFile(Device->StreamHandle,
+                      &HandshakeFinalAck,
+                      sizeof(u8),
+                      &BytesWritten,
+                      &Device->AsyncTxIOInfo);
+            
+            printf("ping acknowledged, Handshake Succesful...\n");
+            HandshakeSuccesful = 1;
+        }
+    }
+    
+    return HandshakeSuccesful;
+}
+
+void
+win32_SerialPortSendData(device *Device)
+{
+    
+    u32 BytesWritten = 0;
+    b32 TransmissionSuccessful = 0;
+    
+    telem_packet Packet = TelemetryDequeuePacket(&Device->PacketQueues, Telem_QueueTransmit);
+    
+    TransmissionSuccessful = WriteFile(Device->StreamHandle, // Handle to the Serial port
+                                       &Packet,              // Data to be written to the port
+                                       sizeof(Packet),       // Number of bytes to write
+                                       &BytesWritten,        // Bytes written
+                                       NULLPTR);
+    
+    if(!TransmissionSuccessful)
+    {
+        Device->Connected = 0;
+    }
+    
+    return;
+}
+
+
+void
+win32_SerialPortRecieveData(device *Device)
+{
+    
     local_persist b32 FirstRead = 1;
     local_persist u8 Buffer[TELEM_PACKET_HEADER_SIZE + TELEM_PAYLOAD_MAXSIZE] = { 0 };
     
@@ -101,14 +185,15 @@ win32_SerialPort_RecieveData(device *Device)
     u32   Event       = 0;
     b32   ExpectingHeader = 1;
     
-    if(WaitCommEvent(Device->StreamHandle,
-                     &Event,
-                     &Device->Overlapped))
+    WaitCommEvent(Device->StreamHandle,
+                  &Event,
+                  &Device->AsyncRxIOInfo);
+    if(1)
     {
         
         u32 BytesTransfered;
         GetOverlappedResult(Device->StreamHandle,
-                            &Device->Overlapped,
+                            &Device->AsyncRxIOInfo,
                             &BytesTransfered,
                             FALSE);
         DWORD Result = GetLastError();
@@ -121,7 +206,7 @@ win32_SerialPort_RecieveData(device *Device)
                          Buffer,
                          sizeof(telem_packet_header),
                          &BytesRead,
-                         0);
+                         &Device->AsyncRxIOInfo);
             }
             
             telem_packet_header *PacketHeader =
@@ -134,7 +219,7 @@ win32_SerialPort_RecieveData(device *Device)
                      Buffer + sizeof(telem_packet_header),
                      PacketHeader->PayloadSize,
                      &BytesRead,
-                     &Device->Overlapped);
+                     &Device->AsyncRxIOInfo);
         }
     }
     
@@ -144,8 +229,8 @@ win32_SerialPort_RecieveData(device *Device)
         
         TelemetryEnqueuePacket(&Device->PacketQueues, Telem_QueueRecieve, *TelemetryPacket);
         
-        MemorySet(&Device->Overlapped,
-                  sizeof(Device->Overlapped),
+        MemorySet(&Device->AsyncRxIOInfo,
+                  sizeof(Device->AsyncRxIOInfo),
                   0);
         
         MemorySet(Buffer, 256, 0);
@@ -158,9 +243,71 @@ win32_SerialPort_RecieveData(device *Device)
     return;
 }
 
+void
+win32_SerialPortFSM(device *Device, platform *Platform)
+{
+    local_persist u32 LastServicedQueue = 0;
+    
+    if(g_SerialPortDevice.Connected)
+    {
+        
+        switch(Device->State)
+        {
+            case Telem_NoConnection:
+            {
+                b32 InitiateHandshake = 0;
+                // TODO(MIGUEL): make this keyboard controlled
+                if(Platform->Controls[0].AlphaKeys[Key_d].IsReleasedNow)
+                {
+                    InitiateHandshake = 1;
+                }
+                
+                if(win32_SerialPortHandshake(Device, InitiateHandshake))
+                {
+                    Device->State = Telem_Waiting;
+                }
+            } break;
+            
+            case Telem_Waiting:
+            {
+                Device->State = Telem_ReceivingPacket;
+#if 0
+                if(LastServicedQueue == Telem_QueueRecieve)
+                {
+                    Device->State = Telem_TransmittingPacket;
+                }
+                else if(LastServicedQueue == Telem_QueueTransmit)
+                {
+                }
+#endif
+            } break;
+            
+            case Telem_ReceivingPacket:
+            {
+                printf("polling drone..");
+                win32_SerialPortRecieveData(Device);
+                LastServicedQueue = Telem_QueueRecieve;
+            } break;
+            
+            case Telem_TransmittingPacket:
+            {
+                win32_SerialPortSendData(Device);
+                LastServicedQueue = Telem_QueueTransmit;
+            } break;
+        }
+    }
+    else
+    {
+        win32_SerialPortInitDevice(Device);
+        Device->State = Telem_NoConnection;
+    }
+    
+    return;
+}
+
 // NOTE(MIGUEL): should take params to decide a device
 b32
-win32_SerialPort_InitDevice(win32_state *Win32State, device *Device)
+win32_SerialPortInitDevice(device *Device)
 {
     // Created An IO Stream to talk with micro controller
     
@@ -173,7 +320,7 @@ win32_SerialPort_InitDevice(win32_state *Win32State, device *Device)
                                       0,
                                       NULL,
                                       OPEN_EXISTING,
-                                      0, //FILE_FLAG_OVERLAPPED,
+                                      FILE_FLAG_OVERLAPPED,
                                       NULL);
     
     
@@ -211,8 +358,8 @@ win32_SerialPort_InitDevice(win32_state *Win32State, device *Device)
     DWORD Event;
     if(!SetCommMask(Device->StreamHandle, EV_RXCHAR))
     { return 0; }
-    if(!WaitCommEvent(Device->StreamHandle, &Event, NULL))
-    { return 0; }
+    //if(!WaitCommEvent(Device->StreamHandle, &Event, NULL))
+    //{ return 0; }
     
     Device->Connected = 1;
     Device->PacketQueues.QueueHead    [0] = 0;
@@ -227,25 +374,3 @@ win32_SerialPort_InitDevice(win32_state *Win32State, device *Device)
     
     return 1;
 }
-
-void
-win32_SerialPort_SendData(device *Device, telem_packet Packet)
-{
-    
-    u32 BytesWritten = 0;
-    b32 TransmissionSuccessful = 0;
-    
-    TransmissionSuccessful = WriteFile(Device->StreamHandle, // Handle to the Serial port
-                                       &Packet, // Data to be written to the port
-                                       sizeof(Packet), // Number of bytes to write
-                                       &BytesWritten           , // Bytes written
-                                       NULLPTR)                ;
-    
-    if(!TransmissionSuccessful)
-    {
-        Device->Connected = 0;
-    }
-    
-    return;
-}
-

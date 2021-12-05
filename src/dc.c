@@ -55,33 +55,29 @@ APP_UPDATE(Update)
     f32 MoveSpeed  = -200.0f *  AppState->DeltaTime;
     
     //~ INPUT RESPONSE
-    if(Platform->Controls[0].AlphaKeys[Key_q].EndedDown)
+    if(Platform->Controls[0].AlphaKeys[Key_q].IsDown)
     {
         Platform->QuitApp = 1;
     }
     
-    if(Platform->Controls[0].AlphaKeys[Key_o].EndedDown)
+    if(Platform->Controls[0].AlphaKeys[Key_o].IsReleasedNow)
     {
         Entity_Create(AppState, MousePos, v2f32Init(400.0f, 60.0f), Entity_output);
     }
     
-    if(Platform->Controls[0].AlphaKeys[Key_c].EndedDown)
+    if(Platform->Controls[0].AlphaKeys[Key_c].IsDown)
     {
         // TODO(MIGUEL): Should connect to a board
         
     }
     
-    if(Platform->Controls[0].AlphaKeys[Key_w].EndedDown)
+    if(Platform->Controls[0].AlphaKeys[Key_w].IsReleasedNow)
     {
+        printf("I made a ui element. \n");
         Entity_Create(AppState, MousePos, v2f32Init(400.0f, 60.0f), Entity_guage);
     }
     
-    if(Platform->Controls[0].AlphaKeys[Key_w].EndedDown)
-    {
-        Entity_Create(AppState, MousePos, v2f32Init(400.0f, 60.0f), Entity_guage);
-    }
-    
-    if(Platform->Controls[0].AlphaKeys[Key_s].EndedDown)
+    if(Platform->Controls[0].AlphaKeys[Key_s].IsDown)
     {
         entity *Entity = AppState->Entities;
         

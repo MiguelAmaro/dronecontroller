@@ -46,10 +46,27 @@ enum telem_data_type
     Telem_s32   = 6,
 };
 
+
+
+#define TELEM_STATUS_ACK   (1 << 4)
+#define TELEM_STATUS_NOACK (1 << 3)
+#define TELEM_STATUS_PING  (1 << 0)
+
+typedef enum telem_status_code telem_status_code;
+enum telem_status_code
+{
+    Telem_Ack   = (1 << 4),
+    Telem_Noack = (1 << 1),
+};
+
 typedef enum telem_state telem_state;
 enum telem_state
-{
-    Telem_Ack
+{ 
+    Telem_NoConnection,
+    Telem_Handshake,
+    Telem_Waiting,
+    Telem_ReceivingPacket,
+    Telem_TransmittingPacket,
 };
 
 typedef enum telem_queue telem_queue;
@@ -68,6 +85,26 @@ struct telem_packet_queues
     u32          QueueHead     [2]; 
     u32          QueueTail     [2]; 
 };
+
+internaldef b32
+TelemetryQueueFull(telem_packet_queues *Queues, telem_queue Direction)
+{
+    b32 Result = 0;
+    
+    Result = (&Queues->QueueCount[Direction] >= &Queues->QueueMaxCount[Direction]);
+    
+    return Result;
+}
+
+internaldef b32
+TelemetryQueueEmpty(telem_packet_queues *Queues, telem_queue Direction)
+{
+    b32 Result = 0;
+    
+    Result = (&Queues->QueueCount[Direction] <= 0);
+    
+    return Result;
+}
 
 internaldef void
 TelemetryEnqueuePacket(telem_packet_queues *Queues,
