@@ -8,9 +8,9 @@
 typedef struct memory_arena memory_arena;
 struct memory_arena
 {
-    size_t  Size;
-    size_t  Used;
-    void   *BasePtr;
+  size_t  Size;
+  size_t  Used;
+  void   *BasePtr;
 };
 
 
@@ -27,5 +27,15 @@ MemoryArenaPushBlock(memory_arena *Arena, size_t Size);
 
 void
 MemoryArenaZeroBlock(size_t size, void *address);
+
+void
+MemorySet(void *SrcBuffer, u64 SrcSize, u8 Value);
+
+void
+MemoryCopy(void *SrcBuffer, u64 SrcSize,
+           void *DstBuffer, u64 DstSize);
+
+void
+MemoryZero(void *SrcBuffer, u64 SrcSize);
 
 #endif //DC_MEMORY_H

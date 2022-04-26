@@ -9,81 +9,81 @@
 typedef struct opengl_shader_quad opengl_shader_quad;
 struct opengl_shader_quad
 {
-    u32 ID;
-    
-    //Uniform IDs
-    u32 UIDColor;
-    u32 UIDTransform;
-    
-    opengl_shader_file_info FileInfo;
+  u32 ID;
+  
+  //Uniform IDs
+  u32 UIDColor;
+  u32 UIDTransform;
+  
+  opengl_shader_file_info FileInfo;
 };
 
 typedef struct opengl_shader_guage opengl_shader_guage;
 struct opengl_shader_guage
 {
-    u32 ID;
-    
-    //Uniform IDs
-    u32 UIDWindowSize       ;
-    u32 UIDDeltaTime        ;
-    
-    u32 UIDProjection;
-    
-    u32 UIDThrottle;
-    u32 UIDColor;
-    u32 UIDInput;
-    u32 UIDSize     ;
-    u32 UIDPos      ;
-    u32 UIDTransform;
-    
-    opengl_shader_file_info FileInfo;
+  u32 ID;
+  
+  //Uniform IDs
+  u32 UIDWindowSize       ;
+  u32 UIDDeltaTime        ;
+  
+  u32 UIDProjection;
+  
+  u32 UIDThrottle;
+  u32 UIDColor;
+  u32 UIDInput;
+  u32 UIDSize     ;
+  u32 UIDPos      ;
+  u32 UIDTransform;
+  
+  opengl_shader_file_info FileInfo;
 };
 
 
 typedef struct opengl_shader_label opengl_shader_label;
 struct opengl_shader_label
 {
-    u32 ID;
-    
-    //Uniform IDs
-    u32 UIDWindowSize       ;
-    u32 UIDDeltaTime        ;
-    
-    u32 UIDProjection;
-    u32 UIDTransform;
-    
-    opengl_shader_file_info FileInfo;
+  u32 ID;
+  
+  //Uniform IDs
+  u32 UIDWindowSize       ;
+  u32 UIDDeltaTime        ;
+  
+  u32 UIDProjection;
+  u32 UIDTransform;
+  
+  opengl_shader_file_info FileInfo;
 };
 
 typedef struct opengl_renderer opengl_renderer;
 struct opengl_renderer
 {
-    HDC   DeviceContext;
-    HGLRC RealContext;
-    
-    u32   WindowWidth;
-    u32   WindowHeight;
-    
-    f32 DeltaTime;
-    
-    u32 UntexturedVertBufferID;
-    u32 UntexturedVertAttribID;
-    
-    u32 TexturedVertBufferID;
-    u32 TexturedVertAttribID;
-    
-    u32 IndexBufferID; // NOTE(MIGUEL): shared
-    
-    u32 TexturedIndexBufferID; // NOTE(MIGUEL): shared
-    
-    
-    //u32 TextureID;
-    render_data RenderData;
-    
-    
-    opengl_shader_guage GuageShader;
-    opengl_shader_label LabelShader;
-    opengl_shader_quad PrimitiveShader;
+  HDC   DeviceContext;
+  HGLRC RealContext;
+  
+  u32   WindowWidth;
+  u32   WindowHeight;
+  
+  f32 DeltaTime;
+  
+  u32 UntexturedVertBufferID;
+  u32 UntexturedVertAttribID;
+  
+  u32 TexturedVertBufferID;
+  u32 TexturedVertAttribID;
+  
+  u32 IndexBufferID; // NOTE(MIGUEL): shared
+  
+  u32 TexturedIndexBufferID; // NOTE(MIGUEL): shared
+  
+  
+  //u32 TextureID;
+  render_data RenderData;
+  
+  
+  opengl_shader_guage GuageShader;
+  opengl_shader_label LabelShader;
+  opengl_shader_quad PrimitiveShader;
 };
 
 
@@ -100,5 +100,7 @@ b32     OpenGLLog        (readonly u8 *file,
                           readonly u8 *function);
 void    OpenGLClearError (void);
 
+b32
+OpenGLLoadShaderFromSource(u32 *ShaderProgram, readonly u8 *ShaderPath, HANDLE File, size_t FileSize);
 
 #endif //FLIGHTCONTROL_OPENGL_H

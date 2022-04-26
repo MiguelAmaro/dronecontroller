@@ -6,6 +6,7 @@
 
 #include "dc_telemetry.h"
 
+// NOTE(MIGUEL): device comms
 typedef struct device device;
 struct device
 {
@@ -20,6 +21,8 @@ struct device
     
     u16 padding;
 };
+
+HANDLE SerialPortLog;
 
 global device g_SerialPortDevice = {0}; 
 
@@ -78,6 +81,107 @@ void ManageReadRequests()
     return;
 }
 
+b32
+VerifyBuffer(u8 *Buffer, s32 Size, HANDLE Log, SYSTEMTIME Time)
+{
+    u8  Msg[4096];
+    u32 MsgSize = 0;
+    b32 Result = 0;
+    b32 ByteWritten = 0;
+    u32 NullLimit = 100;
+    u32 NullCount = 0;
+    b32 IsNullMsg = 1;
+    s32 Byte = sizeof(telem_packet_header); //skip the header
+    
+    for(; Byte < Size; Byte++)
+    {
+        if(Buffer[Byte] != 0)
+        {
+            IsNullMsg = 0;
+            NullCount = 0;
+        }
+        else
+        {
+            //NullCount++;
+            // TODO(MIGUEL): Set the Byte var back by NullCount b4 breaking.
+            //if(NullCount > NullLimit) Byte -= NullCount; break;
+        }
+    }
+    
+    if(IsNullMsg)
+    {
+#if 0
+        MemorySet(Msg, 4096, 0);
+        u32 MsgSize = wsprintf(Msg, "Nothing written to the buffer.\n");
+        
+        WriteFile(SerialPortLog, // Handle to the Serial port
+                  Msg,           // Data to be written to the port
+                  MsgSize,       // Number of bytes to write
+                  NULLPTR,       // Bytes written
+                  NULLPTR);
+        
+#endif
+        Result = 0;
+    }
+    else
+    {
+        
+        MemorySet(Msg, 4096, 0);
+        MsgSize = wsprintf(Msg, "LOG: [%u:%u:%u]\n",
+                           Time.wMinute,
+                           Time.wSecond,
+                           Time.wMilliseconds);
+        
+        WriteFile(SerialPortLog, // Handle to the Serial port
+                  Msg,           // Data to be written to the port
+                  MsgSize,       // Number of bytes to write
+                  NULLPTR,       // Bytes written
+                  NULLPTR);
+        
+        MemorySet(Msg, 4096, 0);
+        MsgSize = wsprintf(Msg, 
+                           "Expected Length: %u\n"
+                           "Msg Size: %d bytes\n"
+                           "NULL Count: %d bytes\n",
+                           (u32)Buffer[1],
+                           Byte,
+                           TELEM_PAYLOAD_MAXSIZE - Byte + sizeof(telem_packet_header));
+        
+        WriteFile(SerialPortLog, // Handle to the Serial port
+                  Msg,           // Data to be written to the port
+                  MsgSize,       // Number of bytes to write
+                  NULLPTR,       // Bytes written
+                  NULLPTR);
+        
+        MemorySet(Msg, 4096, 0);
+        
+        u32 BytesWritten = 0;
+        BytesWritten += wsprintf(Msg + BytesWritten, "Header:\n");
+        BytesWritten += MemoryHexDump(Msg  + BytesWritten,
+                                      4096 - BytesWritten,
+                                      Buffer, sizeof(telem_packet_header),
+                                      2, 1, 8);
+        BytesWritten += wsprintf(Msg + BytesWritten, "Message:\n");
+        BytesWritten += MemoryHexDump(Msg  + BytesWritten,
+                                      4096 - BytesWritten,
+                                      Buffer + sizeof(telem_packet_header), TELEM_PAYLOAD_MAXSIZE,
+                                      32, 8, 4);
+        
+        
+        
+        WriteFile(SerialPortLog, // Handle to the Serial port
+                  Msg,
+                  BytesWritten,                 // Number of bytes to write
+                  NULLPTR,              // Bytes written
+                  NULLPTR);
+        
+        
+        WriteFile(SerialPortLog, "\n", 1, NULLPTR, NULLPTR);
+        Result = 1;
+    }
+    
+    return Result;
+}
 
 void
 win32_SerialPortCloseDevice(device *Device, win32_state *Win32State)
@@ -150,9 +254,9 @@ b32 win32_SerialPortHandshake(device *Device, b32 InitiateHandshake)
 }
 
 void
-win32_SerialPortSendData(device *Device)
+win32_SerialPortSendData(device *Device, u8 TempThrottle)
 {
-    
+#if 0
     u32 BytesWritten = 0;
     b32 TransmissionSuccessful = 0;
     
@@ -169,6 +273,21 @@ win32_SerialPortSendData(device *Device)
         Device->Connected = 0;
     }
     
+#else
+    u32 BytesWritten = 0;
+    b32 TransmissionSuccessful = 0;
+    
+    TransmissionSuccessful = WriteFile(Device->StreamHandle, // Handle to the Serial port
+                                       &TempThrottle,              // Data to be written to the port
+                                       sizeof(TempThrottle),       // Number of bytes to write
+                                       &BytesWritten,        // Bytes written
+                                       NULL);//&Device->AsyncTxIOInfo);
+    /*
+    if(!TransmissionSuccessful)
+    {
+        Device->Connected = 0;
+    }*/
+#endif
     return;
 }
 
@@ -176,6 +295,7 @@ win32_SerialPortSendData(device *Device)
 void
 win32_SerialPortRecieveData(device *Device)
 {
+    b32 RecieveRequestSuccessful;
     
     local_persist b32 FirstRead = 1;
     local_persist u8 Buffer[TELEM_PACKET_HEADER_SIZE + TELEM_PAYLOAD_MAXSIZE] = { 0 };
@@ -185,59 +305,82 @@ win32_SerialPortRecieveData(device *Device)
     u32   Event       = 0;
     b32   ExpectingHeader = 1;
     
+    
+    // NOTE(MIGUEL): Make and comm event so i get notified when windows
+    //               recieves a character from MCU on the comm port.
     WaitCommEvent(Device->StreamHandle,
                   &Event,
                   &Device->AsyncRxIOInfo);
-    if(1)
+    
+    // NOTE(MIGUEL): Forgot what i indtended with this
+    u32 BytesTransfered;
+    GetOverlappedResult(Device->StreamHandle,
+                        &Device->AsyncRxIOInfo,
+                        &BytesTransfered,
+                        FALSE);
+    
+    // NOTE(MIGUEL): Make sure i havent already sent out a read request.
+    //               If i haven i check if the char came using commevent and 
+    //               if it did send a request to data in to a temp buffer.
+    
+    DWORD Result = GetLastError();
+    if((Result != ERROR_IO_PENDING) &&
+       (Result != ERROR_IO_INCOMPLETE))
     {
-        
-        u32 BytesTransfered;
-        GetOverlappedResult(Device->StreamHandle,
-                            &Device->AsyncRxIOInfo,
-                            &BytesTransfered,
-                            FALSE);
-        DWORD Result = GetLastError();
-        if((Result != ERROR_IO_PENDING) &&
-           (Result != ERROR_IO_INCOMPLETE))
+        if(Event & EV_RXCHAR)
         {
-            if(Event & EV_RXCHAR)
+            RecieveRequestSuccessful = ReadFile(Device->StreamHandle,
+                                                Buffer,
+                                                sizeof(telem_packet_header),
+                                                &BytesRead,
+                                                &Device->AsyncRxIOInfo);
+            
+            
+            if(!RecieveRequestSuccessful)
             {
-                ReadFile(Device->StreamHandle,
-                         Buffer,
-                         sizeof(telem_packet_header),
-                         &BytesRead,
-                         &Device->AsyncRxIOInfo);
+                //Device->Connected = 0;
             }
-            
-            telem_packet_header *PacketHeader =
-                (telem_packet_header *)Buffer;
-            
-            
-            Device->StreamEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
-            
-            ReadFile(Device->StreamHandle,
-                     Buffer + sizeof(telem_packet_header),
-                     PacketHeader->PayloadSize,
-                     &BytesRead,
-                     &Device->AsyncRxIOInfo);
         }
+        
+        telem_packet_header *PacketHeader =
+            (telem_packet_header *)Buffer;
+        
+        
+        Device->StreamEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
+        
+        ReadFile(Device->StreamHandle,
+                 Buffer + sizeof(telem_packet_header),
+                 PacketHeader->PayloadSize,
+                 &BytesRead,
+                 &Device->AsyncRxIOInfo);
+        
     }
     
-    if( WaitForSingleObject(Device->StreamEventHandle, 0))
+    SYSTEMTIME Time = { 0 }; GetSystemTime(&Time);
+    
+    telem_packet *TelemetryPacket = (telem_packet *)Buffer;
+    
+    
+    // NOTE(MIGUEL): This function is causing some sort of corruption in the stack
+    //               which cause crt code to access invalid memory. The accurs randomly
+    //               except when clicking the background console which guarentees the 
+    //               the access violation
+    //VerifyBuffer(Buffer, sizeof(Buffer), SerialPortLog, Time);
+    
+    TelemetryEnqueuePacket(&Device->PacketQueues, Telem_QueueRecieve, *TelemetryPacket);
+    
+    //MemorySet(Buffer, 256, 0);
+    MemorySet(&Device->AsyncRxIOInfo,
+              sizeof(Device->AsyncRxIOInfo),
+              0);
+    
+    if(1)//WAIT_OBJECT_0 == WaitForSingleObject(Device->StreamEventHandle, 0))
     {
-        telem_packet *TelemetryPacket = (telem_packet *)Buffer;
-        
-        TelemetryEnqueuePacket(&Device->PacketQueues, Telem_QueueRecieve, *TelemetryPacket);
-        
-        MemorySet(&Device->AsyncRxIOInfo,
-                  sizeof(Device->AsyncRxIOInfo),
-                  0);
-        
-        MemorySet(Buffer, 256, 0);
     }
+    
     else
     {
-        ASSERT(ERROR_IO_PENDING == GetLastError());
+        win32_PrintLastSystemError();
     }
     
     return;
@@ -250,7 +393,6 @@ win32_SerialPortFSM(device *Device, platform *Platform)
     
     if(g_SerialPortDevice.Connected)
     {
-        
         switch(Device->State)
         {
             case Telem_NoConnection:
@@ -270,29 +412,11 @@ win32_SerialPortFSM(device *Device, platform *Platform)
             
             case Telem_Waiting:
             {
-                Device->State = Telem_ReceivingPacket;
-#if 0
-                if(LastServicedQueue == Telem_QueueRecieve)
-                {
-                    Device->State = Telem_TransmittingPacket;
-                }
-                else if(LastServicedQueue == Telem_QueueTransmit)
-                {
-                }
-#endif
-            } break;
-            
-            case Telem_ReceivingPacket:
-            {
                 printf("polling drone..");
                 win32_SerialPortRecieveData(Device);
-                LastServicedQueue = Telem_QueueRecieve;
-            } break;
-            
-            case Telem_TransmittingPacket:
-            {
-                win32_SerialPortSendData(Device);
-                LastServicedQueue = Telem_QueueTransmit;
+                
+                u8 TempThrottle = (u8)(Platform->Controls[0].NormThrottlePos * 256);
+                win32_SerialPortSendData(Device, TempThrottle);
             } break;
         }
     }
@@ -371,6 +495,66 @@ win32_SerialPortInitDevice(device *Device)
     Device->PacketQueues.QueueTail    [1] = 0;
     Device->PacketQueues.QueueCount   [1] = 0;
     Device->PacketQueues.QueueMaxCount[1] = DEVICE_QUEUE_SIZE;
+    
+    // NOTE(MIGUEL): Create Log File
+    
+    SerialPortLog = CreateFileA("F:\\Dev\\DroneController\\res\\SerialPortLog.txt",
+                                GENERIC_WRITE,
+                                FILE_SHARE_READ,
+                                NULL,
+                                CREATE_NEW,
+                                0,
+                                NULL);
+    
+    if(GetLastError() == ERROR_FILE_EXISTS)
+    {
+        
+        SerialPortLog = CreateFileA("F:\\Dev\\DroneController\\res\\SerialPortLog.txt",
+                                    GENERIC_WRITE,
+                                    FILE_SHARE_READ, NULL,
+                                    TRUNCATE_EXISTING,
+                                    0, NULL );
+        
+#if 0
+        replay_buffer->memory_map = CreateFileMapping(replay_buffer->file_handle,
+                                                      0, PAGE_READWRITE,
+                                                      max_size.HighPart,
+                                                      max_size.LowPart, 0);
+        
+        replay_buffer->memory_block = MapViewOfFile(replay_buffer->memory_map,
+                                                    FILE_MAP_ALL_ACCESS,
+                                                    0, 0,
+                                                    state_win32.main_memory_block_size);
+#endif
+        
+#if 0
+        SetFilePointerEx(debug_file,
+                         (LARGE_INTEGER){0, 0},
+                         &debug_file_ptr,
+                         FILE_END);
+#endif
+    }
+    
+    SYSTEMTIME Time = { 0 }; GetSystemTime(&Time);
+    
+    u8 Msg[256] = { 0 };
+    u32 MsgSize = wsprintf(Msg,
+                           "========================================\n"
+                           "Log Created %u/%u/%u at %u:%u\n"
+                           "========================================\n",
+                           Time.wMonth,
+                           Time.wDay,
+                           Time.wYear,
+                           Time.wHour,
+                           Time.wMinute);
+    
+    WriteFile(SerialPortLog, // Handle to the Serial port
+              Msg,           // Data to be written to the port
+              MsgSize,       // Number of bytes to write
+              NULLPTR,       // Bytes written
+              NULLPTR);
+    
+    ASSERT(SerialPortLog != INVALID_HANDLE_VALUE);
     
     return 1;
 }

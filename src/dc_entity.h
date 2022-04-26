@@ -10,6 +10,7 @@ enum entity_type
 {
     Entity_guage,
     Entity_output,
+    Entity_hd,
 };
 
 typedef struct entity entity;
@@ -19,11 +20,11 @@ struct entity
     
     entity_type Type;
     
-    v2f32 Dim;
-    v2f32 Pos;
+    v2f Dim;
+    v2f Pos;
     
     u8 HotAlpha;
-    v4f32 Color;
+    v4f Color;
     
     u32 RenderInfoID;
 };

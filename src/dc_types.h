@@ -6,13 +6,13 @@
 #include <stdint.h>
 
 
-#define ASSERT(Expression) if(!(Expression)){ *(u32 *)0x00 = 0; }
-#define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
+#define ASSERT(Expression) if(!(Expression)){ __debugbreak(); }
+#define ArrayCount(array) (sizeof(array) / sizeof(array[0]))
 
 enum
 {
-    true  = 1,
-    false = 0,
+  true  = 1,
+  false = 0,
 };
 
 #define NULLPTR       ((void *)0x00)

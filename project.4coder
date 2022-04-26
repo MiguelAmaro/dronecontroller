@@ -1,35 +1,37 @@
+
 version(2);
 
-project_name =  "Drone Controller";
+project_name = "Drone Controller";
 
 patterns = {
-    "*.c",
-    "*.h",
-    "*.bat",
-    "*.sh",
-    "*.glsl",
-    "*.4coder",
+  "*.c",
+  "*.h",
+  "*.bat",
+  "*.sh",
+  "*.glsl",
+  "*.hlsl",
+  "*.4coder",
 };
 
 blacklist_patterns =
 {
-    ".git",
-    ".build",
+  ".git",
+  ".build",
 };
 
 load_paths = 
 {
 	.win = 
-    {
-        { .path =   ".", .recursive = false, .relative = true },
-        { .path = "src", .recursive = false, .relative = true },
-        { .path = "res/shaders", .recursive = false, .relative = true },
-    }
+  {
+    { .path =   ".", .recursive = false, .relative = true },
+    { .path = "src", .recursive = false, .relative = true },
+    { .path = "res/shaders", .recursive = false, .relative = true },
+  }
 };
 
 commands =
 {
-    .build_exe =
+  .build_exe =
 	{  
 		.win              = "build.bat -exe",
 		.out              = "*compilation*",
@@ -38,8 +40,8 @@ commands =
 		.cursor_at_end    = false,
 		
 	},
-    
-    .build_dll =
+  
+  .build_dll =
 	{  
 		.win              = "build.bat -dll",
 		.out              = "*compilation*",
@@ -48,25 +50,25 @@ commands =
 		.cursor_at_end    = false,
 		
 	},
-    
-    .run =
-    {
+  
+  .run =
+  {
 		.win              = "run.bat",
 		.footer_panel     = false, 
 		.save_dirty_files = false, 
 		.cursor_at_end    = false
 	},
-    
-    .renderdoc =
-    {
-        .win              = "F:\\Dev_Tools\\RenderDoc\\qrenderdoc.exe",
-        .footer_panel     = false, 
+  
+  .renderdoc =
+  {
+    .win              = "F:\\Dev_Tools\\RenderDoc\\qrenderdoc.exe",
+    .footer_panel     = false, 
 		.save_dirty_files = false, 
 		.cursor_at_end    = false,
 	},
-    
-    .debug =
-    {
+  
+  .debug =
+  {
 		.win              = "debug.bat",
 		.save_dirty_files = false, 
 		.cursor_at_end    = false,
@@ -75,10 +77,10 @@ commands =
 
 fkey_command =
 {
-    .F1 = "build_exe",
-    .F2 = "build_dll",
-    
-    .F12 = "run",
-    .F11 = "debug",
-    .F10 = "renderdoc",
+  .F1 = "build_exe",
+  .F2 = "build_dll",
+  
+  .F12 = "run",
+  .F11 = "debug",
+  .F10 = "renderdoc",
 };

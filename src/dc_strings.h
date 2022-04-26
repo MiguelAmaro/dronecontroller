@@ -13,11 +13,11 @@
 typedef struct str8 str8;
 struct str8
 {
-    u8 *Data;
-    u32 Count;
+  u8 *Data;
+  u64 Count;
 };
 
-str8 str8Init(u8 *String, u32 Count);
+str8 str8Init(u8 *String, u64 Count);
 str8 str8InitFromArena(memory_arena *Arena, u8 *String);
 str8 str8InitFromArenaFormated(memory_arena *Arena, u8* Format, ...);
 void str8RemoveFromEndToChar  (u8 Char, str8 *A);
@@ -29,6 +29,9 @@ void str8Concat(size_t SourceACount, char *SourceA,
 
 void str8AppendBtoA(str8 *A, u32 ASize, str8 B);
 void BuildPrefixSuffixTable(u32* Table, u32 TableSize, readonly u8 *SearchTerm);
+
+u32
+str8GetCStrLength(u8 *Char);
 u32  StringMatchKMP(u8 *Text,  u32 BytesToRead, u8 *SearchTerm);
 
 #endif //FLIGHTCONTROL_FILEIO_H

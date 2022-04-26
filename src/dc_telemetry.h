@@ -138,7 +138,7 @@ TelemetryDequeuePacket(telem_packet_queues *Queues,
     
     telem_packet Result = { 0 };
     
-    telem_packet *Queue =  Queues->Queue         [Direction];
+    telem_packet *Queue =  Queues->Queue        [Direction];
     u32        MaxCount =  Queues->QueueMaxCount[Direction];
     u32          *Count = &Queues->QueueCount   [Direction];
     u32           *Head = &Queues->QueueHead    [Direction]; 

@@ -2,48 +2,21 @@
 A windows applicatnion used to control and display debug info of a drone and
 it's flight controller.
 
-### General Win32
-https://github.com/grassator/win32-window-custom-titlebar
+![](gif-link)
+
+## Features
+- [ ] Serial Port Log
+- [ ] Camera Feed
+- [ ] Profiler
 
 
-### Linear Algebra
-*Books:*
-*   The fundamentals of Computer Graphics
-*   [The Book of Shaders](https://thebookofshaders.com/)
-*   [Learn OpenGl](https://learnopengl.com/)
+## DEV 
+**OBJECTIVES**
+- [ ] IMGUI
+- [ ] Protocol
 
-*Basis and Coordinate Systems:*
-0. pg. 109 - 115
-1.   [[Khan Academy] Liniar Combinations & Span](https://youtu.be/Qm_OS-8COwU)
-2.   [[Khan Academy] Linear Independence](https://youtu.be/CrV1xCWdY-g)
-3.   [[HandmadeHero] Basis I](https://www.youtube.com/watch?v=lcmjmOfWPNU&feature=youtu.be)
-4.   [[HandmadeHero] Basis II](https://www.youtube.com/watch?v=2yKKcjBIaL0)
-5.   [[3Blue1Brown] Linear Combinations, Span, Basis](https://www.youtube.com/watch?v=k7RM-ot2NWY&list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab&index=2)
-6.   5.1 Determinants: pg.89 - 91
-7.   [[3Blue1Brown] Linear Transformations and Matrices](https://www.youtube.com/watch?v=kYB8IZa5AuE&list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab&index=3)
-8.   [[HandmadeHero] Vertex and Fagment Shaders](https://www.youtube.com/watch?v=GtNvxxl3AK4)
-9.   [[Khan Academy] Linear Algebra Course](https://www.khanacademy.org/math/linear-algebra)                                                                       
+**IMPLEMENTED**
+- [x] Hotswapable shader code
+- [x] Hotswapables sim code
 
-*Graphics Resources:*
-*    http://www.songho.ca/opengl/gl_transform.html 
-*    http://davidlively.com/programming/graphics/opengl-matrices/row-major-vs-column-major/   
-*    http://www.songho.ca/opengl/gl_matrix.html                                                                               
-
-
-*OpenGL:*
-*    https://web.archive.org/web/20150225192608/http://www.arcsynthesis.org/gltut/Positioning/Tutorial%2005.html
-
-*IMGui:*
-*    http://silverspaceship.com/inner/imgui/
-*    https://www.youtube.com/watch?v=Z1qyvQsjK5Y          
-
-
-*System Communication Resources:*
-*    https://en.wikipedia.org/wiki/Handshaking
-*    https://en.wikipedia.org/wiki/Flow_control_(data)
-*    https://en.wikipedia.org/wiki/Network_congestion#Congestion_control
-*    https://en.wikipedia.org/wiki/Augmented_Backus%E2%80%93Naur_form
-*    https://en.wikipedia.org/wiki/Finite-state_machine
-*    https://docs.microsoft.com/en-us/windows/win32/devio/communications-resources
-*    https://docs.microsoft.com/en-us/windows/win32/sync/synchronization
-*    https://docs.microsoft.com/en-us/windows/win32/devio/monitoring-communications-events                                                                                                                                                                                                         
+                                                                                                                                                                

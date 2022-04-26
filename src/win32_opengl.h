@@ -33,10 +33,10 @@
 typedef struct opengl_shader_file_info opengl_shader_file_info;
 struct opengl_shader_file_info
 {
-    HANDLE InUseShaderFileA;
-    HANDLE InUseShaderFileB;
-    WIN32_FIND_DATAA CurrentShaderFileInfo;
-    u8 ShaderPath[256];
+  HANDLE InUseShaderFileA;
+  HANDLE InUseShaderFileB;
+  WIN32_FIND_DATAA CurrentShaderFileInfo;
+  u8 ShaderPath[256];
 };
 
 
@@ -56,6 +56,8 @@ wglChoosePixelFormatARB_type    *wglChoosePixelFormatARB;
 
 
 HGLRC win32_InitOpenGL(HDC real_dc);
-
-
+b32
+OpenGLCreateShader(u32 *ShaderID, opengl_shader_file_info *Info, u8 *Path, u32 PathSize);
+void 
+OpenGLHotSwapShader(u32 *ShaderID, opengl_shader_file_info *Info);
 #endif //WIN32_OPENGL_H

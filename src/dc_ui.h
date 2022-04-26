@@ -34,8 +34,8 @@ struct ui_state
     b32 MiddleUp;
     b32 MiddleDown;
     
-    v2f32 Mouse;
-    v2f32 DeltaMouse;
+    v2f Mouse;
+    v2f DeltaMouse;
     
     ui_context Active   ;
     ui_context Hot      ;
@@ -56,9 +56,9 @@ struct ui_state
     
     // INTERNAL USE ONLY
     b32   LastValid;
-    v2f32 LastMouse;
+    v2f LastMouse;
     
-    v2f32 Drag; // drag offsets
+    v2f Drag; // drag offsets
 };
 
 typedef struct ui_layout ui_layout;
@@ -98,11 +98,11 @@ typedef struct ui_text ui_text;
 struct ui_text
 {
     u32 EntityID;
-    v3f32 Color;
+    v3f Color;
     
     str8 String;
     
-    v2f32 Pos;
+    v2f Pos;
     
     f32 Scale;
 };
@@ -115,8 +115,10 @@ void UIProccessGuage(entity *Entity,
                      f32 dt,
                      f32 NormThrottlePos,
                      memory_arena *TextArena,
-                     render_data *RenderData);
+                     render_data *RenderData,
+                     v2f ViewPos,
+                     v2f ViewDim);
 
 b32
-UIDragXY(r2f32 *Bounds, v2f32 *Pos, void *ID);
+UIDragXY(r2f *Bounds, v2f *Pos, void *ID);
 #endif //DC_UI_H

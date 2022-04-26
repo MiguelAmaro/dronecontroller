@@ -51,7 +51,7 @@ typedef struct input_src input_src;
 struct input_src
 {
     // UI Oriented
-    v2f32 MousePos;
+    v2f MousePos;
     
     b32 MouseLeftButtonDown;
     b32 MouseLeftButtonPressed;
@@ -62,7 +62,7 @@ struct input_src
     input_button_state   NavKeys[6];
     
     // Drone Oriented
-    v2f32 StickPos;
+    v2f StickPos;
     f32   NormThrottlePos;
 };
 
@@ -87,11 +87,11 @@ struct platform
     // TODO(MIGUEL): normalize the axis inputs
     // NOTE(MIGUEL): initializatin is ASSERT guarded
     b32 StickIsInitialized; 
-    b32 SerialportDeviceConnected;
     
     // TIME
     f32 CurrentTime;
     f32 LastTime;
+    
     
     //platform_api API;
 };

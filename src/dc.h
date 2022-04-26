@@ -12,6 +12,14 @@
 
 #define ENTITY_MAX_COUNT 256
 
+
+typedef struct view view;
+struct view
+{
+    v2f Pos;
+    v2f Dim;
+};
+
 typedef struct app_state app_state;
 struct app_state
 {
@@ -23,9 +31,15 @@ struct app_state
     u32    EntityCount;
     u32    EntityMaxCount;
     
+    // TODO(MIGUEL): figure out and note wtf any of this 
+    //               is for.
     ui_text UIText[UITEXT_MAX_COUNT];
     u32     UITextCount;
     u32     UITextMaxCount;
+    
+    view Views[16];
+    u32  ViewCount;
+    u32  ViewMax;
     
     memory_arena UITextArena;
 };
@@ -40,8 +54,16 @@ struct app_backbuffer
 };
 
 
+typedef struct device_info device_info;
+struct device_info
+{
+    b32                  Connected;
+    telem_state          State;
+    telem_packet_queues *PacketQueues;
+};
 
-#define APP_UPDATE( name) void name(platform *Platform, telem_packet_queues *PacketQueues, render_data *RenderData)
+
+#define APP_UPDATE( name) void name(platform *Platform, device_info *Device, render_data *RenderData)
 typedef APP_UPDATE(app_update);
 APP_UPDATE(app_update_stub)
 { return; }
