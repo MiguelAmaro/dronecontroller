@@ -187,9 +187,12 @@ void
 win32_SerialPortCloseDevice(device *Device, win32_state *Win32State)
 {
   Device->Connected = 0;
+  
   CloseHandle(Win32State->CommThreadInfo.Handle);
   Win32State->CommThreadInfo.Handle = 0;
+  
   CloseHandle(Device->StreamHandle); /// Closing the Serial Port
+  
   return;
 }
 
@@ -555,3 +558,5 @@ win32_SerialPortInitDevice(device *Device)
   
   return 1;
 }
+
+

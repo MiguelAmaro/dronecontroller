@@ -3,12 +3,6 @@
 #ifndef DRONECONTROLLER_MATH_H
 #define DRONECONTROLLER_MATH_H
 
-#include "dc_types.h"
-#include "math.h"
-
-#define Max(a,b)  ((a) > (b) ? (a) : (b))
-#define Min(a,b)  ((a) < (b) ? (a) : (b))
-
 static f32 Cosine(f32 Theta)
 {
   f32 Result = cosf(Theta);
@@ -20,68 +14,6 @@ static f32 Sine(f32 Theta)
   f32 Result = sinf(Theta);
   return Result;
 }
-
-typedef union v2f v2f;
-union v2f
-{
-  struct
-  {
-    f32 x;
-    f32 y;
-  };
-  f32 c[2];
-};
-
-typedef union v2s v2s;
-union v2s
-{
-  struct
-  {
-    s32 x;
-    s32 y;
-  };
-  s32 c[2];
-};
-
-
-typedef union v3f v3f;
-union v3f
-{
-  struct
-  {
-    f32 x;
-    f32 y;
-    f32 z;
-  };
-  struct
-  {
-    f32 r;
-    f32 g;
-    f32 b;
-  };
-  f32 c[3];
-};
-
-typedef union v4f v4f;
-union v4f
-{
-  struct
-  {
-    f32 x;
-    f32 y;
-    f32 z;
-    f32 w;
-  };
-  struct
-  {
-    f32 r;
-    f32 g;
-    f32 b;
-    f32 a;
-  };
-  f32 c[4];
-};
-
 //- RECTANGLES 
 
 typedef union r2f r2f;
@@ -114,35 +46,12 @@ union r2s
 
 //- MATRICES 
 
-typedef union m2f m2f;
-union m2f
-{
-  v2f r[2];
-  f32   e[4];
-  f32   x[2][2];
-};
-
-typedef union m3f m3f;
-union m3f
-{
-  v3f  r[3];
-  f32  e[9];
-  f32  x[3][3];
-};
-
-typedef union m4f m4f;
-union m4f
-{
-  v4f r[4];
-  f32 e[16];
-  f32 x[4][4];
-};
 
 //~ OPERATIORS & FUNCTIONS
 
 //- VECTOR 2D 
 
-internaldef v2f v2fInit(f32 x, f32 y)
+fn v2f v2fInit(f32 x, f32 y)
 {
   v2f Result = { 0 };
   
@@ -152,7 +61,7 @@ internaldef v2f v2fInit(f32 x, f32 y)
   return Result;
 }
 
-internaldef f32 v2fInner(v2f A, v2f B)
+fn f32 v2fInner(v2f A, v2f B)
 {
   f32 Result = 0.0f;
   
@@ -163,7 +72,7 @@ internaldef f32 v2fInner(v2f A, v2f B)
 }
 
 
-internaldef v2f v2fSub(v2f A, v2f B)
+fn v2f v2fSub(v2f A, v2f B)
 {
   v2f Result = { 0 };
   
@@ -173,7 +82,7 @@ internaldef v2f v2fSub(v2f A, v2f B)
   return Result;
 }
 
-internaldef v2f v2fAdd(v2f A, v2f B)
+fn v2f v2fAdd(v2f A, v2f B)
 {
   v2f Result = { 0 };
   
@@ -183,7 +92,7 @@ internaldef v2f v2fAdd(v2f A, v2f B)
   return Result;
 }
 
-internaldef v2f v2fAddxy(v2f A, f32 x, f32 y)
+fn v2f v2fAddxy(v2f A, f32 x, f32 y)
 {
   v2f Result = { 0 };
   
@@ -194,7 +103,7 @@ internaldef v2f v2fAddxy(v2f A, f32 x, f32 y)
 }
 
 
-internaldef v2f v2fAddConstant(v2f *A, v2f *B)
+fn v2f v2fAddConstant(v2f *A, v2f *B)
 {
   v2f Result = { 0 };
   
@@ -204,7 +113,7 @@ internaldef v2f v2fAddConstant(v2f *A, v2f *B)
   return Result;
 }
 
-internaldef v2s v2s32Init(s32 x, s32 y)
+fn v2s v2s32Init(s32 x, s32 y)
 {
   v2s Result = { 0 };
   
@@ -216,7 +125,7 @@ internaldef v2s v2s32Init(s32 x, s32 y)
 
 //- VECTOR 3D 
 
-internaldef v3f v3fInit(f32 x, f32 y, f32 z)
+fn v3f v3fInit(f32 x, f32 y, f32 z)
 {
   v3f Result = { 0 };
   
@@ -228,7 +137,7 @@ internaldef v3f v3fInit(f32 x, f32 y, f32 z)
 }
 
 //- VECTOR 4D 
-internaldef v4f v4fInit(f32 x, f32 y, f32 z, f32 w)
+fn v4f v4fInit(f32 x, f32 y, f32 z, f32 w)
 {
   v4f Result = { 0 };
   
@@ -242,7 +151,7 @@ internaldef v4f v4fInit(f32 x, f32 y, f32 z, f32 w)
 
 //- RECTANGLE 2D 
 
-internaldef r2f r2fInit(r2f *Rect, v2f *Dim, v2f *Pos)
+fn r2f r2fInit(r2f *Rect, v2f *Dim, v2f *Pos)
 {
   r2f Result = { 0 };
   
@@ -256,7 +165,7 @@ internaldef r2f r2fInit(r2f *Rect, v2f *Dim, v2f *Pos)
   return Result;
 }
 
-internaldef r2f r2fInitFromPosRadius(r2f *Rect, v2f *Pos, f32 Radius)
+fn r2f r2fInitFromPosRadius(r2f *Rect, v2f *Pos, f32 Radius)
 {
   r2f Result = { 0 };
   
@@ -270,7 +179,7 @@ internaldef r2f r2fInitFromPosRadius(r2f *Rect, v2f *Pos, f32 Radius)
   return Result;
 }
 
-internaldef b32 r2fIsInRect(r2f *Bounds, v2f *Point)
+fn b32 r2fIsInRect(r2f *Bounds, v2f *Point)
 {
   b32 Result = ((Point->x <= Bounds->max.x) &&
                 (Point->y <= Bounds->max.y) &&
@@ -280,7 +189,7 @@ internaldef b32 r2fIsInRect(r2f *Bounds, v2f *Point)
   return Result;
 }
 
-internaldef r2f r2fDimPosFromMinMax(r2f *Rect, v2f *Dim, v2f *Pos)
+fn r2f r2fDimPosFromMinMax(r2f *Rect, v2f *Dim, v2f *Pos)
 {
   r2f Result = { 0 };
   
@@ -291,7 +200,7 @@ internaldef r2f r2fDimPosFromMinMax(r2f *Rect, v2f *Dim, v2f *Pos)
   return Result;
 }
 
-internaldef void r2fAddTo(r2f *Bounds, f32 Value)
+fn void r2fAddTo(r2f *Bounds, f32 Value)
 {
   r2f *Result = Bounds;
   
@@ -303,7 +212,7 @@ internaldef void r2fAddTo(r2f *Bounds, f32 Value)
   return;
 }
 
-internaldef void r2sInit(r2s *Rect, v2s *Dim, v2s *Pos)
+fn void r2sInit(r2s *Rect, v2s *Dim, v2s *Pos)
 {
   Rect->min.x = Pos->x - (Dim->x / 2);
   Rect->min.y = Pos->y - (Dim->y / 2);
@@ -313,7 +222,7 @@ internaldef void r2sInit(r2s *Rect, v2s *Dim, v2s *Pos)
   return;
 }
 
-internaldef b32 r2s32IsInRect(r2s *Bounds, v2s *Point)
+fn b32 r2s32IsInRect(r2s *Bounds, v2s *Point)
 {
   return ((Point->x <= Bounds->max.x) &&
           (Point->y <= Bounds->max.y) &&
@@ -323,7 +232,7 @@ internaldef b32 r2s32IsInRect(r2s *Bounds, v2s *Point)
 
 
 //- MATRIX 3D 
-internaldef m3f m3fMultiply(m3f A, m3f B)
+fn m3f m3fMultiply(m3f A, m3f B)
 {
   m3f Result = { 0 };
   
@@ -331,11 +240,11 @@ internaldef m3f m3fMultiply(m3f A, m3f B)
   {
     for(u32 ScanCol = 0; ScanCol < 3; ScanCol++)
     {
-      f32 *Entry = &Result.r[ScanRow].c[ScanCol];
+      f32 *Entry = &Result.r[ScanRow].e[ScanCol];
       
       for(u32 ScanElement = 0; ScanElement < 3; ScanElement++)
       {
-        *Entry += A.r[ScanRow].c[ScanElement] * B.r[ScanElement].c[ScanCol];
+        *Entry += A.r[ScanRow].e[ScanElement] * B.r[ScanElement].e[ScanCol];
       }
     }
   }
@@ -343,7 +252,7 @@ internaldef m3f m3fMultiply(m3f A, m3f B)
   return Result;
 }
 
-internaldef m3f
+fn m3f
 m3fIdentity(void)
 {
   m3f Result = { 0 };
@@ -355,7 +264,7 @@ m3fIdentity(void)
   return Result;
 }
 
-internaldef m3f
+fn m3f
 m3fScale(f32 x, f32 y, f32 z)
 {
   m3f Result = { 0 };
@@ -368,7 +277,7 @@ m3fScale(f32 x, f32 y, f32 z)
 }
 
 
-internaldef m3f
+fn m3f
 m3fRotate(f32 x, f32 y, f32 z)
 {
   m3f Result = { 0 };
@@ -403,8 +312,7 @@ m3fRotate(f32 x, f32 y, f32 z)
   return Result;
 }
 
-internaldef m3f
-m3fTranslate(v3f PosDelta)
+fn m3f m3fTranslate(v3f PosDelta)
 {
   m3f Result = { 0 };
 #if 0
@@ -419,7 +327,7 @@ m3fTranslate(v3f PosDelta)
   return Result;
 }
 
-internaldef m3f
+fn m3f
 m3fOrtho(f32 LeftPlane,
          f32 RightPlane,
          f32 BottomPlane,
@@ -428,32 +336,32 @@ m3fOrtho(f32 LeftPlane,
   m3f Result = { 0 };
 #if 0
   // NORMALIZING X
-  Result.r[0].c[0] = 2.0f / (RightPlane - LeftPlane);
+  Result.r[0].e[0] = 2.0f / (RightPlane - LeftPlane);
   
   // NORMALIZING Y
-  Result.r[1].c[1] = 2.0f / (TopPlane - BottomPlane);
+  Result.r[1].e[1] = 2.0f / (TopPlane - BottomPlane);
   
   // DISREGARDING Z
-  Result.r[2].c[2] = 1.0f;
+  Result.r[2].e[2] = 1.0f;
 #else
   
   // NORMALIZING X
-  Result.r[0].c[0] = 2.0f / (RightPlane - LeftPlane);
-  Result.r[0].c[2] = -1.0f * ((RightPlane + LeftPlane) / (RightPlane - LeftPlane));
+  Result.r[0].e[0] = 2.0f / (RightPlane - LeftPlane);
+  Result.r[0].e[2] = -1.0f * ((RightPlane + LeftPlane) / (RightPlane - LeftPlane));
   
   // NORMALIZING Y
-  Result.r[1].c[1] = 2.0f / (TopPlane - BottomPlane);
-  Result.r[1].c[2] = -1.0f * ((TopPlane + BottomPlane) / (TopPlane - BottomPlane));
+  Result.r[1].e[1] = 2.0f / (TopPlane - BottomPlane);
+  Result.r[1].e[2] = -1.0f * ((TopPlane + BottomPlane) / (TopPlane - BottomPlane));
   
   // DISREGARDING Z
-  Result.r[2].c[2] = 1.0f;
+  Result.r[2].e[2] = 1.0f;
 #endif
   
   return Result;
 }
 
 //- MATRIX 4D 
-internaldef m4f m4fMultiply(m4f A, m4f B)
+fn m4f m4fMultiply(m4f A, m4f B)
 {
   m4f Result = { 0 };
   
@@ -461,11 +369,11 @@ internaldef m4f m4fMultiply(m4f A, m4f B)
   {
     for(u32 ScanCol = 0; ScanCol < 4; ScanCol++)
     {
-      f32 *Entry = &Result.r[ScanRow].c[ScanCol];
+      f32 *Entry = &Result.r[ScanRow].e[ScanCol];
       
       for(u32 ScanElement = 0; ScanElement < 4; ScanElement++)
       {
-        *Entry += A.r[ScanRow].c[ScanElement] * B.r[ScanElement].c[ScanCol];
+        *Entry += A.r[ScanRow].e[ScanElement] * B.r[ScanElement].e[ScanCol];
       }
     }
   }
@@ -473,7 +381,7 @@ internaldef m4f m4fMultiply(m4f A, m4f B)
   return Result;
 }
 
-internaldef m4f
+fn m4f
 m4fIdentity(void)
 {
   m4f Result = { 0 };
@@ -486,7 +394,7 @@ m4fIdentity(void)
   return Result;
 }
 
-internaldef m4f
+fn m4f
 m4fScale(f32 x, f32 y, f32 z)
 {
   m4f Result = { 0 };
@@ -500,7 +408,7 @@ m4fScale(f32 x, f32 y, f32 z)
 }
 
 
-internaldef m4f
+fn m4f
 m4fRotate(f32 x, f32 y, f32 z)
 {
   m4f Result = { 0 };
@@ -538,7 +446,7 @@ m4fRotate(f32 x, f32 y, f32 z)
   return Result;
 }
 
-internaldef m4f
+fn m4f
 m4fTranslate(v3f PosDelta)
 {
   m4f Result = { 0 };
@@ -551,7 +459,7 @@ m4fTranslate(v3f PosDelta)
   return Result;
 }
 
-internaldef m4f
+fn m4f
 m4fViewport(v2f WindowDim)
 {
   m4f Result = { 0 };
@@ -565,7 +473,7 @@ m4fViewport(v2f WindowDim)
 }
 
 
-internaldef m4f
+fn m4f
 m4fOrtho(f32 LeftPlane,
          f32 RightPlane,
          f32 BottomPlane,
@@ -581,14 +489,14 @@ m4fOrtho(f32 LeftPlane,
   //v3:12 12 14 15
   
   
-  Result.r[0].c[0] =  2.0f / (RightPlane - LeftPlane);
-  Result.r[1].c[1] =  2.0f / (TopPlane - BottomPlane);
-  Result.r[2].c[2] = -2.0f / (FarPlane -   NearPlane);
+  Result.r[0].e[0] =  2.0f / (RightPlane - LeftPlane);
+  Result.r[1].e[1] =  2.0f / (TopPlane - BottomPlane);
+  Result.r[2].e[2] = -2.0f / (FarPlane -   NearPlane);
   
-  Result.r[3].c[0] = -1.0f * ((RightPlane + LeftPlane  ) / (RightPlane -   LeftPlane));
-  Result.r[3].c[1] = -1.0f * ((TopPlane   + BottomPlane) / (TopPlane   - BottomPlane));
-  Result.r[3].c[2] = -1.0f * ((FarPlane   + NearPlane  ) / (FarPlane   -   NearPlane));
-  Result.r[3].c[3] =  1.0f;
+  Result.r[3].e[0] = -1.0f * ((RightPlane + LeftPlane  ) / (RightPlane -   LeftPlane));
+  Result.r[3].e[1] = -1.0f * ((TopPlane   + BottomPlane) / (TopPlane   - BottomPlane));
+  Result.r[3].e[2] = -1.0f * ((FarPlane   + NearPlane  ) / (FarPlane   -   NearPlane));
+  Result.r[3].e[3] =  1.0f;
   
   return Result;
 }

@@ -12,7 +12,7 @@
 internaldef
 u32 Entity_Create(app_state *AppState, v2f Pos , v2f Dim, entity_type Type)
 {
-  ASSERT(AppState->EntityCount < ENTITY_MAX_COUNT);
+  Assert(AppState->EntityCount < ENTITY_MAX_COUNT);
   
   entity *Entity = AppState->Entities + AppState->EntityCount;
   
@@ -23,13 +23,10 @@ u32 Entity_Create(app_state *AppState, v2f Pos , v2f Dim, entity_type Type)
   
   return AppState->EntityCount++;
 }
-
-void
-App_Init(platform *Platform_)
+void App_Init(platform *Platform_)
 {
   return;
 }
-
 APP_UPDATE(Update)
 {
   app_state *AppState = (app_state *)Platform->PermanentStorage;
@@ -236,7 +233,7 @@ APP_UPDATE(Update)
       case Entity_output:
       {
         
-        ASSERT(DroneMsg.Count != 4294967295);
+        Assert(DroneMsg.Count != 4294967295);
         
         v2f DeltaPos = Entity->Pos; 
         
@@ -287,8 +284,6 @@ APP_UPDATE(Update)
     UIText->Pos = Entity->Pos;
     
   }
-  
   UIEndFrame();
-  
   return;
 }

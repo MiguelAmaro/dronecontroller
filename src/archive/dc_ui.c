@@ -1,8 +1,3 @@
-#include "dc_entity.h"
-#include "dc_ui.h"
-#include "dc_math.h"
-#include "dc_render_commands.h"
-
 #define UI_TEAL 0.75f, 1.00f, 1.0f, 0.4f
 #define UI_PINK 1.00f, 0.75f, 1.0f, 0.4f
 

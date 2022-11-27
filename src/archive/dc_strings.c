@@ -8,7 +8,7 @@ str8Init(u8 *String, size_t Count)
   Result.Data  = String;
   Result.Count = (Count > 0) ? (Count - 1): 0; // Ignore Null Terminator
   
-  ASSERT(Result.Count != 4294967295);
+  Assert(Result.Count != 4294967295);
   
   return Result;
 }
@@ -60,7 +60,7 @@ str8InitFromArenaFormated(memory_arena *Arena, u8* Format, ...)
   {
     // NOTE(MIGUEL): If we write outsize, suicide for us.
     //               but in a grandios way.
-    ASSERT(!"We fucked up. This is your fault"
+    Assert(!"We fucked up. This is your fault"
            " for using this function! not mine!");
   }
   
@@ -167,7 +167,7 @@ BuildPrefixSuffixTable(u32* Table, u32 TableSize, readonly u8 *SearchTerm)
     }
   }
   
-  ASSERT(Table == OriginalTable);
+  Assert(Table == OriginalTable);
   
   return;
 }
@@ -185,8 +185,8 @@ StringMatchKMP(u8 *Text,  u32 BytesToRead, u8 *SearchTerm)
   u32  Table[512]; 
   u32 *TableCopy = Table;
   
-  ASSERT(SearchTermLength < ArrayCount(Table));
-  ASSERT(Text && Table);
+  Assert(SearchTermLength < ArrayCount(Table));
+  Assert(Text && Table);
   
   BuildPrefixSuffixTable(Table , SearchTermLength, SearchTerm);
   
@@ -213,7 +213,7 @@ StringMatchKMP(u8 *Text,  u32 BytesToRead, u8 *SearchTerm)
     }
   }
   
-  ASSERT(Table == TableCopy);
+  Assert(Table == TableCopy);
   
   return (i - j);
 }

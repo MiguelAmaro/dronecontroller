@@ -1,9 +1,9 @@
 @echo off
 
-taskkill /f /im win32_dc.exe
+taskkill /f /im main.exe
 pushd build
 
-if exist win32_dc.exe (start win32_dc.exe) else (echo ERROR: "win32_dc.exe" does not exist!!!)
+if exist main.exe (start main.exe) else (echo ERROR: "main.exe" does not exist!!!)
 
 
 popd

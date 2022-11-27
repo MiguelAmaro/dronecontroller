@@ -479,7 +479,6 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         {
           g_Platform.Controls[0].AlphaKeys[Key].IsPressedNow  = 0;
           g_Platform.Controls[0].AlphaKeys[Key].IsReleasedNow = 0;
-          
         }
         
         for(u32 Key = 0; Key < 6; Key++)

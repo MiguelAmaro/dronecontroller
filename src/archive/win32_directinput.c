@@ -359,13 +359,23 @@ void win32_DirectInputLogDeviceInfo(LPCDIDEVICEINSTANCE device)
   
   return;
 }
-fn b32 DirectInputLogError(HRESULT result, const char* expectation)
+
+b32 win32_DirectInputLogError(HRESULT result, const char* expectation)
 {
   printf("%s - ", expectation);
   switch(result)
   {
-    case DI_OK: { printf("Successful ! \n"); return TRUE; } break;
-    case DIERR_BETADIRECTINPUTVERSION: { printf("Error: %s", "Beta Direct Input version \n"); return FALSE; }
+    case DI_OK:
+    {
+      printf("Successful ! \n");
+      return TRUE;
+    }
+    break;
+    case DIERR_BETADIRECTINPUTVERSION:
+    {
+      printf("Error: %s", "Beta Direct Input version \n");
+      return FALSE;
+    }
     break;
     case DIERR_INVALIDPARAM:
     {

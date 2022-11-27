@@ -49,7 +49,7 @@ OpenGLCreateShader(u32 *ShaderID, opengl_shader_file_info *Info, u8 *Path, u32 P
                                        OPEN_EXISTING,
                                        FILE_FLAG_DELETE_ON_CLOSE,
                                        0);
-  ASSERT(Info->InUseShaderFileA);
+  Assert(Info->InUseShaderFileA);
   
   OpenGLLoadShaderFromSource(ShaderID,
                              Info->ShaderPath,
@@ -237,12 +237,12 @@ OpenGLLoadShaderFromSource(u32 *ShaderProgram, readonly u8 *ShaderPath, HANDLE F
 {
   b32 Result = 0;
   
-  ASSERT(File);
+  Assert(File);
   
   u32 BytesToRead = FileSize;
   u8 *Shader      = calloc(( BytesToRead + 10 ),  sizeof(u8));
   
-  ASSERT(Shader);
+  Assert(Shader);
   
   MemorySet(Shader, (BytesToRead + 10), 0);
   

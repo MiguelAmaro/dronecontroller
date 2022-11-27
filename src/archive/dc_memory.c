@@ -128,7 +128,7 @@ MemoryArenaDiscard(memory_arena *Arena)
 void *
 MemoryArenaPushBlock(memory_arena *Arena, size_t Size)
 {
-  ASSERT((Arena->Used + Size) <= Arena->Size);
+  Assert((Arena->Used + Size) <= Arena->Size);
   
   void *NewArenaPartitionAdress  = (u8 *)Arena->BasePtr + Arena->Used;
   Arena->Used  += Size;

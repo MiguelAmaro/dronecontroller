@@ -19,4 +19,14 @@ it's flight controller.
 - [x] Hotswapable shader code
 - [x] Hotswapables sim code
 
-                                                                                                                                                                
+                                                                                                                                                            
+																																							
+  //**************************************
+  // INPUT DEVICE SETUP
+  //
+  // CONFIGURE AXES AND BUTTONS
+  //**************************************
+  //https://www.cs.cmu.edu/~jparise/directx/joystick/
+  // Use Defaults configure later ^ (Enumerating Axes)
+  //Joystick->lpVtbl->EnumObjects(Joystick, enumAxesCallback, NULL, DIDFT_AXIS)
+  

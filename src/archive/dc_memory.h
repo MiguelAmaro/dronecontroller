@@ -30,11 +30,9 @@ MemoryArenaZeroBlock(size_t size, void *address);
 
 void
 MemorySet(void *SrcBuffer, u64 SrcSize, u8 Value);
-
 void
 MemoryCopy(void *SrcBuffer, u64 SrcSize,
            void *DstBuffer, u64 DstSize);
-
 void
 MemoryZero(void *SrcBuffer, u64 SrcSize);
 

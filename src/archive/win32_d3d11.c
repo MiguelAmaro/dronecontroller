@@ -29,7 +29,7 @@ win32_InitD3D11(HWND Window,
                              D3D11_SDK_VERSION,
                              &AppState->Device, 0, &AppState->Context);
   
-  ASSERT(SUCCEEDED(Status));
+  Assert(SUCCEEDED(Status));
 #endif
   
   DXGI_SWAP_CHAIN_DESC SwapChainDescription = {0};
@@ -58,7 +58,7 @@ win32_InitD3D11(HWND Window,
                                          FeatureLevel,
                                          Context );
   
-  ASSERT(SUCCEEDED(Status));
+  Assert(SUCCEEDED(Status));
   
   
   ID3D11Texture2D        *BackBufferTexture;
@@ -73,7 +73,7 @@ win32_InitD3D11(HWND Window,
   
   ID3D11Texture2D_Release(BackBufferTexture);
   
-  ASSERT(SUCCEEDED(Status));
+  Assert(SUCCEEDED(Status));
   
   
   ID3D11DeviceContext_OMSetRenderTargets(*Context, 1, TargetView, 0);
@@ -110,7 +110,7 @@ void D3D11InitShaderFileInfo(d3d11_shader_file_info *FileInfo, char *FilePath, u
                                   OPEN_EXISTING,
                                   FILE_ATTRIBUTE_NORMAL, 0);
   
-  ASSERT(*ShaderCodeHandle);
+  Assert(*ShaderCodeHandle);
   
   FileInfo->FileSize = ((ShaderFileInfo->nFileSizeHigh << 31) |
                         (ShaderFileInfo->nFileSizeLow));

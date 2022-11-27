@@ -1,15 +1,8 @@
-/* date = November 28th 2021 3:33 am */
-
-#ifndef DC_RENDER_COMMANDS_H
-#define DC_RENDER_COMMANDS_H
-
-#include "dc_types.h"
-#include "dc_math.h"
-#include "dc_strings.h"
+#ifndef RENDERCMD_H
+#define RENDERCMD_H
 
 
 //- PRIMITIVES 
-
 typedef struct textured_vertex textured_vertex;
 struct textured_vertex
 {
@@ -141,7 +134,8 @@ void PushLabel(render_data *RenderData, str8 String, v2f Pos, f32 Scale, v3f Col
                v2f ViewPos, v2f ViewDim);
 void PushLabel2(render_data *RenderData, str8 String, v2f Pos, f32 Scale, v3f Color,
                 v2f ViewPos, v2f ViewDim);
-
 void PushRect(render_data *RenderData, v2f Pos, v2f Dim, v4f Color,
               v2f ViewPos, v2f ViewDim);
-#endif //DC_RENDER_COMMANDS_H
+
+
+#endif //RENDERCMD_H

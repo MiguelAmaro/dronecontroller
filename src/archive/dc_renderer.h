@@ -92,7 +92,7 @@ opengl_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, re
   OpenGLRenderer->WindowWidth   = WindowWidth;
   OpenGLRenderer->WindowHeight  = WindowHeight;
   
-  ASSERT(gladLoadGL());
+  Assert(gladLoadGL());
   
   u32 gl_major = 0;
   u32 gl_minor = 0; 
@@ -129,7 +129,7 @@ opengl_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, re
                                             MEM_COMMIT | MEM_RESERVE,
                                             PAGE_READWRITE);
   
-  ASSERT(RenderData.TexturedVerts   &&
+  Assert(RenderData.TexturedVerts   &&
          RenderData.UntexturedVerts &&
          RenderData.Indices         &&
          RenderData.RenderCommands);
@@ -180,17 +180,17 @@ opengl_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, re
   opengl_shader_label *LabelShader     = &OpenGLRenderer->LabelShader;
   opengl_shader_quad  *PrimitiveShader = &OpenGLRenderer->PrimitiveShader;
   
-  ASSERT(OpenGLCreateShader(&GuageShader->ID,
+  Assert(OpenGLCreateShader(&GuageShader->ID,
                             &GuageShader->FileInfo,
                             "../res/shaders/throttle.glsl",
                             sizeof("../res/shaders/throttle.glsl")));
   
-  ASSERT(OpenGLCreateShader(&LabelShader->ID,
+  Assert(OpenGLCreateShader(&LabelShader->ID,
                             &LabelShader->FileInfo,
                             "../res/shaders/text.glsl",
                             sizeof("../res/shaders/text.glsl")));
   
-  ASSERT(OpenGLCreateShader(&PrimitiveShader->ID,
+  Assert(OpenGLCreateShader(&PrimitiveShader->ID,
                             &PrimitiveShader->FileInfo,
                             "../res/shaders/primitive.glsl",
                             sizeof("../res/shaders/primitive.glsl")));
@@ -269,7 +269,7 @@ d3d11_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, ren
                                             MEM_COMMIT | MEM_RESERVE,
                                             PAGE_READWRITE);
   
-  ASSERT(RenderData.TexturedVerts   &&
+  Assert(RenderData.TexturedVerts   &&
          RenderData.UntexturedVerts &&
          RenderData.Indices         &&
          RenderData.RenderCommands);
@@ -308,7 +308,7 @@ d3d11_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, ren
                                      &UntexturedVDesc,
                                      NULL,
                                      &Renderer->UntexturedVBuffer);
-  ASSERT(!FAILED(Result));
+  Assert(!FAILED(Result));
   
   //- UNTEXUTURED VERTEX
   // (NONE)
@@ -328,7 +328,7 @@ d3d11_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, ren
                                      &UntexturedIDesc,
                                      &UntexturedIData,
                                      &Renderer->UntexturedIBuffer );
-  ASSERT(!FAILED(Result));
+  Assert(!FAILED(Result));
   
   /// SET INPUT LAYOUT
   
@@ -399,7 +399,7 @@ d3d11_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, ren
                                      &GPUConstDesc,
                                      &GPUConstResource,
                                      &Renderer->GuageConsts);
-  ASSERT(!FAILED(Result));
+  Assert(!FAILED(Result));
   
   GPUConstDesc.BindFlags      = D3D11_BIND_CONSTANT_BUFFER;
   GPUConstDesc.Usage          = D3D11_USAGE_DYNAMIC;
@@ -411,7 +411,7 @@ d3d11_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, ren
                                      &GPUConstDesc,
                                      &GPUConstResource,
                                      &Renderer->LabelConsts);
-  ASSERT(!FAILED(Result));
+  Assert(!FAILED(Result));
 #endif
   GPUConstDesc.BindFlags      = D3D11_BIND_CONSTANT_BUFFER;
   GPUConstDesc.Usage          = D3D11_USAGE_DYNAMIC;
@@ -423,7 +423,7 @@ d3d11_renderer *RendererInit(HWND Window, s32 WindowWidth, s32 WindowHeight, ren
                                      &GPUConstDesc,
                                      &GPUConstResource,
                                      &Renderer->PrimitiveConsts);
-  ASSERT(!FAILED(Result));
+  Assert(!FAILED(Result));
   
   
 #if 0
@@ -1374,14 +1374,14 @@ GlyphHashTableFill(glyph_hash *GlyphHash, d3d11_renderer *Renderer)
   if (FT_Init_FreeType(&ft))
   {
     OutputDebugString("FreeType Error: Could not init FreeType Library");
-    ASSERT(0);
+    Assert(0);
   }
   
   FT_Face Face;
   if (FT_New_Face(ft, "..\\res\\fonts\\cour.ttf", 0, &Face))
   {
     OutputDebugString("FreeType Error: Could not load Font");
-    ASSERT(0);
+    Assert(0);
   }
   
   FT_Set_Pixel_Sizes(Face, 0, 48);
@@ -1394,7 +1394,7 @@ GlyphHashTableFill(glyph_hash *GlyphHash, d3d11_renderer *Renderer)
     if (FT_Load_Char(Face, CharIndex, FT_LOAD_RENDER))
     {
       OutputDebugString("FreeType Error: Could not load Glyph");
-      ASSERT(0);
+      Assert(0);
       continue;
     }
     
@@ -1437,7 +1437,7 @@ GlyphHashTableFill(glyph_hash *GlyphHash, d3d11_renderer *Renderer)
     if (FT_Load_Char(Face, CharIndex, FT_LOAD_RENDER))
     {
       OutputDebugString("FreeType Error: Could not load Glyph");
-      ASSERT(0);
+      Assert(0);
       continue;
     }
     

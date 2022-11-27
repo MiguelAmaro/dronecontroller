@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 
-#define ASSERT(Expression) if(!(Expression)){ __debugbreak(); }
+#define Assert(Expression) if(!(Expression)){ __debugbreak(); }
 #define ArrayCount(array) (sizeof(array) / sizeof(array[0]))
 
 enum
